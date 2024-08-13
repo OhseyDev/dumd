@@ -100,7 +100,7 @@ enum ItemOp {
 }
 
 impl FromStr for Item {
-    type Err = crate::md::ParseError;
+    type Err = crate::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut i: usize = 0;
         let mut chars = s.chars();
@@ -118,7 +118,7 @@ impl FromStr for Item {
                                 Item::BoldItalic(_) => true,
                                 _ => false,
                             } {
-                                return Err(crate::md::ParseError::UnexpectedChar('*'));
+                                return Err(crate::ParseError::UnexpectedChar('*'));
                             }
                             i.asterick();
                         } else {
@@ -149,7 +149,7 @@ impl FromStr for Item {
             i += 1;
         }
         let _ = i;
-        Err(crate::md::ParseError::UnexpectedEnd)
+        Err(crate::ParseError::UnexpectedEnd)
     }
 }
 

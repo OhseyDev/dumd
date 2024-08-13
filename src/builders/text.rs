@@ -1,4 +1,4 @@
-use crate::md::elements::text::{Heading, HeadingLvl, Item, Link};
+use crate::elements::text::{Heading, HeadingLvl, Item, Link};
 use url::Url;
 
 #[derive(Debug)]

@@ -7,7 +7,7 @@ pub struct Code {
 }
 
 impl FromStr for Code {
-    type Err = crate::md::ParseError;
+    type Err = crate::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut r: u8 = 0;
         let mut chars = s.chars();
@@ -30,7 +30,7 @@ impl FromStr for Code {
         let mut b: u8 = 0;
         let mut content = String::new();
         if c == '\0' {
-            return Err(crate::md::ParseError::UnexpectedEnd);
+            return Err(crate::ParseError::UnexpectedEnd);
         } else if c != '`' {
             content.push(c);
         }
@@ -46,7 +46,7 @@ impl FromStr for Code {
             }
         }
         if content.is_empty() {
-            return Err(crate::md::ParseError::EmptyContent);
+            return Err(crate::ParseError::EmptyContent);
         }
         return Ok(Code {
             content,
