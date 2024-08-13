@@ -133,7 +133,10 @@ impl super::Builder for HeadingBuilder {
         if self.content.is_empty() {
             return Err(super::Error::IncompleteData);
         }
-        todo!()
+        Ok(Heading {
+            level: self.level,
+            content: self.content.into_boxed_slice(),
+        })
     }
     fn new() -> impl super::Builder {
         HeadingBuilder {

@@ -60,6 +60,34 @@ impl HeadingLvl {
     }
 }
 
+macro_rules! into_headinglvl {
+    ($num:ident) => {
+        impl Into<$num> for HeadingLvl {
+            fn into(self) -> $num {
+                match self {
+                    Self::Level1 => 1,
+                    Self::Level2 => 2,
+                    Self::Level3 => 3,
+                    Self::Level4 => 4,
+                    Self::Level5 => 5,
+                    Self::Level6 => 6,
+                }
+            }
+        }
+    };
+}
+into_headinglvl!(u8);
+into_headinglvl!(u16);
+into_headinglvl!(u32);
+into_headinglvl!(u64);
+into_headinglvl!(u128);
+into_headinglvl!(usize);
+into_headinglvl!(i8);
+into_headinglvl!(i16);
+into_headinglvl!(i32);
+into_headinglvl!(i64);
+into_headinglvl!(i128);
+into_headinglvl!(isize);
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Quote<'a> {
     Nested(&'a Quote<'a>),
@@ -162,5 +190,15 @@ impl ToString for Item {
             Self::BoldItalic(s) => format!("***{}***", s),
             Self::Link(l) => format!("{}[{}]({})", if l.img { "!" } else { "" }, l.name, l.href),
         };
+    }
+}
+
+impl ToString for Heading {
+    fn to_string(&self) -> String {
+        let mut content = "#".repeat(self.level.into());
+        for i in self.content.iter() {
+            content.push_str(&i.to_string());
+        }
+        content
     }
 }
