@@ -1,7 +1,7 @@
 use crate::elements::text::{Heading, HeadingLvl, Item, Link};
 use url::Url;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LinkBuilder {
     name: String,
     href: Option<Url>,
@@ -111,7 +111,8 @@ impl super::Builder for LinkBuilder {
             img: self.img,
         })
     }
-    fn new() -> impl super::Builder {
+    #[allow(refining_impl_trait)]
+    fn new() -> Self {
         LinkBuilder {
             name: String::new(),
             href: None,

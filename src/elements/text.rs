@@ -2,6 +2,8 @@ use std::str::FromStr;
 
 use url::Url;
 
+use crate::builders::Builder;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Link {
     pub(crate) name: Box<str>,
@@ -136,6 +138,7 @@ impl FromStr for Item {
         let mut last_char: Option<char> = None;
         let mut item: Option<Item> = None;
         let mut op = ItemOp::Eval;
+        let mut link_builder: Option<crate::builders::text::LinkBuilder> = None;
         while let Some(c) = chars.next() {
             match c {
                 '*' => {
@@ -157,16 +160,35 @@ impl FromStr for Item {
                     }
                 }
                 '[' => {
-                    if let Some(i) = item {
-                        let _ = i;
-                        todo!();
-                    } else if let Some('!') = last_char {
-                        todo!()
+                    if let Some(_) = item {
+                        if let Some(c) = last_char {
+                            content.push(c);
+                        }
+                        last_char = Some(c);
                     } else {
-                        todo!()
+                        link_builder = Some(crate::builders::text::LinkBuilder::new());
+                    }
+                    if let Some('!') = last_char {
+                        if let Some(builder) = link_builder {
+                            link_builder = Some(builder.make_img());
+                        }
                     }
                 }
-                ']' => todo!(),
+                ']' => {
+                    if let Some(builder) = &link_builder {
+                        let res = builder.clone().build();
+                        match res {
+                            Ok(l) => {
+                                return Ok(Item::Link(l));
+                            },
+                            Err(e) => {
+                                return Err(crate::ParseError::from(e));
+                            },
+                        }
+                    } else {
+                        return Err(crate::ParseError::UnexpectedChar(']'));
+                    }
+                },
                 _ => {
                     if let Some(c) = last_char {
                         content.push(c);
