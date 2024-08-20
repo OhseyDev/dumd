@@ -123,83 +123,11 @@ impl Item {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum ItemOp {
-    Eval,
-    Close,
-}
-
 impl FromStr for Item {
     type Err = crate::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut i: usize = 0;
-        let mut chars = s.chars();
-        let mut content = String::new();
-        let mut last_char: Option<char> = None;
-        let mut item: Option<Item> = None;
-        let mut op = ItemOp::Eval;
-        let mut link_builder: Option<crate::builders::text::LinkBuilder> = None;
-        while let Some(c) = chars.next() {
-            match c {
-                '*' => {
-                    if op == ItemOp::Close {
-                    } else if let Some(i) = &mut item {
-                        if i.is_empty() {
-                            if match i {
-                                Item::BoldItalic(_) => true,
-                                _ => false,
-                            } {
-                                return Err(crate::ParseError::UnexpectedChar('*'));
-                            }
-                            i.asterick();
-                        } else {
-                            op = ItemOp::Close;
-                        }
-                    } else {
-                        item = Some(Item::Italic(Box::from("")))
-                    }
-                }
-                '[' => {
-                    if let Some(_) = item {
-                        if let Some(c) = last_char {
-                            content.push(c);
-                        }
-                        last_char = Some(c);
-                    } else {
-                        link_builder = Some(crate::builders::text::LinkBuilder::new());
-                    }
-                    if let Some('!') = last_char {
-                        if let Some(builder) = link_builder {
-                            link_builder = Some(builder.make_img());
-                        }
-                    }
-                }
-                ']' => {
-                    if let Some(builder) = &link_builder {
-                        let res = builder.clone().build();
-                        match res {
-                            Ok(l) => {
-                                return Ok(Item::Link(l));
-                            },
-                            Err(e) => {
-                                return Err(crate::ParseError::from(e));
-                            },
-                        }
-                    } else {
-                        return Err(crate::ParseError::UnexpectedChar(']'));
-                    }
-                },
-                _ => {
-                    if let Some(c) = last_char {
-                        content.push(c);
-                    }
-                    last_char = Some(c);
-                }
-            }
-            i += 1;
-        }
-        let _ = i;
-        Err(crate::ParseError::UnexpectedEnd)
+        let _ = s;
+        todo!()
     }
 }
 
