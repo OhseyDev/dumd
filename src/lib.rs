@@ -48,7 +48,7 @@ fn process_char(
         *counter += 1;
         return;
     } else if src.is_empty() {
-        tokens.push(ParseToken::RepeatSpecial(*last_c, *counter))
+        tokens.push(ParseToken::RepeatSpecial(*last_c, *counter + 1))
     } else {
         tokens.push(ParseToken::String(src.clone()));
         src.clear()
@@ -67,14 +67,14 @@ pub fn tokenize(s: &str) -> Vec<ParseToken> {
         match c {
             'A'..='Z' => {
                 if last_c != '\0' {
-                    tokens.push(ParseToken::RepeatSpecial(last_c, counter));
+                    tokens.push(ParseToken::RepeatSpecial(last_c, counter + 1));
                     last_c = '\0';
                 }
                 src.push(c)
             }
             'a'..='z' => {
                 if last_c != '\0' {
-                    tokens.push(ParseToken::RepeatSpecial(last_c, counter));
+                    tokens.push(ParseToken::RepeatSpecial(last_c, counter + 1));
                     last_c = '\0';
                 }
                 src.push(c)
@@ -90,7 +90,7 @@ pub fn tokenize(s: &str) -> Vec<ParseToken> {
         }
     }
     if last_c != '\0' {
-        tokens.push(ParseToken::RepeatSpecial(last_c, counter))
+        tokens.push(ParseToken::RepeatSpecial(last_c, counter + 1))
     }
     return tokens;
 }
