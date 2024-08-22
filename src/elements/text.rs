@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use url::Url;
 
-use crate::builders::Builder;
+use crate::ParseToken;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Link {
@@ -126,8 +126,127 @@ impl Item {
 impl FromStr for Item {
     type Err = crate::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let _ = s;
-        todo!()
+        let tokens = crate::tokenize(s);
+        let mut iter = tokens.iter();
+        while let Some(first_tok) = iter.next() {
+            match first_tok {
+                ParseToken::RepeatSpecial('[', 0) => {
+                    let name = if let Some(tok) = iter.next() {
+                        match tok {
+                            ParseToken::RepeatSpecial(c, _) => {
+                                return Err(crate::ParseError::UnexpectedChar(*c))
+                            }
+                            ParseToken::String(s) => s.to_owned().into_boxed_str(),
+                        }
+                    } else {
+                        return Err(crate::ParseError::UnexpectedEnd);
+                    };
+                    if let Some(tok) = iter.next() {
+                        match tok {
+                            ParseToken::RepeatSpecial(']', 0) => {}
+                            ParseToken::RepeatSpecial(c, _) => {
+                                return Err(crate::ParseError::UnexpectedChar(*c))
+                            }
+                            ParseToken::String(s) => {
+                                return Err(crate::ParseError::UnexpectedString(s.to_owned()))
+                            }
+                        }
+                    } else {
+                        return Err(crate::ParseError::UnexpectedEnd);
+                    }
+                    if let Some(tok) = iter.next() {
+                        match tok {
+                            ParseToken::RepeatSpecial('(', 0) => {}
+                            ParseToken::RepeatSpecial(c, _) => {
+                                return Err(crate::ParseError::UnexpectedChar(*c))
+                            }
+                            ParseToken::String(s) => {
+                                return Err(crate::ParseError::UnexpectedString(s.to_owned()))
+                            }
+                        }
+                    } else {
+                        return Err(crate::ParseError::UnexpectedEnd);
+                    }
+                    let mut src = String::new();
+                    while let Some(tok) = iter.next() {
+                        match tok {
+                            ParseToken::RepeatSpecial(c, n) => {
+                                src.push_str(&c.to_string().repeat(*n + 1))
+                            }
+                            ParseToken::String(s) => src.push_str(s),
+                        }
+                    }
+                    if !src.ends_with(')') {
+                        return Err(crate::ParseError::UnexpectedEnd);
+                    } else {
+                        src.remove(src.len() - 1);
+                    }
+                    let u = url::Url::parse(&src);
+                    if let Some(e) = u.as_ref().err() {
+                        return Err(crate::ParseError::UrlError(e.clone()));
+                    }
+                    return Ok(Item::Link(Link {
+                        name,
+                        href: u.ok().unwrap(),
+                        img: false,
+                    }));
+                }
+                ParseToken::RepeatSpecial('*', n) => {
+                    if *n >= 3 {
+                        return Err(crate::ParseError::UnexpectedChar('*'));
+                    }
+                    let src = if let Some(tok) = iter.next() {
+                        match tok {
+                            ParseToken::RepeatSpecial(c, _) => {
+                                return Err(crate::ParseError::UnexpectedChar(*c))
+                            }
+                            ParseToken::String(s) => s.to_owned(),
+                        }
+                    } else {
+                        return Err(crate::ParseError::UnexpectedEnd);
+                    };
+                    if let Some(tok) = iter.next() {
+                        match tok {
+                            ParseToken::RepeatSpecial('*', m) => {
+                                if m > n {
+                                    return Err(crate::ParseError::UnexpectedChar('*'));
+                                } else if m < n {
+                                    return Err(crate::ParseError::UnexpectedEnd);
+                                } else {
+                                    let mut i = 0;
+                                    let mut val = Self::Italic(src.into_boxed_str());
+                                    while i < *n {
+                                        i += 1;
+                                        val.asterick()
+                                    }
+                                    return Ok(val);
+                                }
+                            }
+                            ParseToken::RepeatSpecial(c, _) => {
+                                return Err(crate::ParseError::UnexpectedChar(*c))
+                            }
+                            ParseToken::String(s) => {
+                                return Err(crate::ParseError::UnexpectedString(s.clone()))
+                            }
+                        }
+                    }
+                }
+                ParseToken::String(s) => {
+                    let mut src = s.clone();
+                    while let Some(tok) = iter.next() {
+                        match tok {
+                            ParseToken::RepeatSpecial(c, n) => {
+                                src.push_str(&c.to_string().repeat(*n + 1))
+                            }
+                            ParseToken::String(s) => src.push_str(s),
+                        }
+                    }
+                }
+                ParseToken::RepeatSpecial(' ', _) => continue,
+                _ => {}
+            }
+        }
+        return Err(crate::ParseError::EmptyDocument);
     }
 }
 
@@ -147,7 +266,7 @@ impl ToString for Heading {
     fn to_string(&self) -> String {
         let mut content = "#".repeat(self.level.into());
         for i in self.content.iter() {
-            content.push_str(&i.to_string());
+            content.push_str(&i.to_string())
         }
         content
     }
