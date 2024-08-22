@@ -27,7 +27,7 @@ impl From<crate::builders::Error> for ParseError {
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
-pub enum ParseToken {
+pub(self) enum ParseToken {
     RepeatSpecial(char, usize),
     String(String),
 }
@@ -58,7 +58,7 @@ fn process_char(
 }
 
 #[inline]
-pub fn tokenize(s: &str) -> Vec<ParseToken> {
+pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
     let mut tokens = Vec::new();
     let mut last_c = '\0';
     let mut counter: usize = 0;
@@ -93,4 +93,55 @@ pub fn tokenize(s: &str) -> Vec<ParseToken> {
         tokens.push(ParseToken::RepeatSpecial(last_c, counter + 1))
     }
     return tokens;
+}
+
+mod tests {
+    #[test]
+    fn tokenize() {
+        use super::ParseToken;
+        assert_eq!(
+            vec![
+                ParseToken::RepeatSpecial('*', 2),
+                ParseToken::String("bold text".to_string()),
+                ParseToken::RepeatSpecial('*', 2)
+            ],
+            super::tokenize("**bold text**")
+        );
+        assert_eq!(
+            vec![
+                ParseToken::RepeatSpecial('!', 1),
+                ParseToken::RepeatSpecial('[', 1),
+                ParseToken::String("link".to_string()),
+                ParseToken::RepeatSpecial(']', 1),
+                ParseToken::RepeatSpecial('(', 1),
+                ParseToken::String("https".to_string()),
+                ParseToken::RepeatSpecial(':', 1),
+                ParseToken::RepeatSpecial('/', 2),
+                ParseToken::String("example".to_string()),
+                ParseToken::RepeatSpecial('.', 1),
+                ParseToken::String("com".to_string()),
+                ParseToken::RepeatSpecial(')', 1),
+            ],
+            super::tokenize("![link](https://example.com)")
+        );
+        assert_eq!(
+            vec![
+                ParseToken::RepeatSpecial('`', 2),
+                ParseToken::String("code".to_string()),
+                ParseToken::RepeatSpecial('`', 2)
+            ],
+            super::tokenize("``code``")
+        );
+        assert_eq!(
+            vec![
+                ParseToken::RepeatSpecial('`', 3),
+                ParseToken::String("code".to_string()),
+                ParseToken::RepeatSpecial('\n', 1),
+                ParseToken::String("a type of code".to_string()),
+                ParseToken::RepeatSpecial('\n', 1),
+                ParseToken::RepeatSpecial('`', 3)
+            ],
+            super::tokenize("```code\na type of code\n```")
+        );
+    }
 }
