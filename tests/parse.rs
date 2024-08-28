@@ -26,6 +26,10 @@ fn parse_code() {
 }
 
 #[test]
+fn parse_heading() {
+}
+
+#[test]
 fn parse_text() {
     assert_eq!(
         Ok(text::Item::Bold("bold text".to_string().into_boxed_str())),

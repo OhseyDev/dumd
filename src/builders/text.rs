@@ -90,7 +90,7 @@ impl LinkBuilder {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct HeadingBuilder {
-    content: Vec<Item>,
+    content: String,
     level: HeadingLvl,
 }
 
@@ -122,8 +122,8 @@ impl super::Builder for LinkBuilder {
 }
 
 impl HeadingBuilder {
-    pub fn item(mut self, item: Item) -> Self {
-        self.content.push(item);
+    pub fn content(mut self, s: String) -> Self {
+        self.content = s;
         self
     }
 }
@@ -136,12 +136,12 @@ impl super::Builder for HeadingBuilder {
         }
         Ok(Heading {
             level: self.level,
-            content: self.content.into_boxed_slice(),
+            content: self.content,
         })
     }
     fn new() -> impl super::Builder {
         HeadingBuilder {
-            content: Vec::new(),
+            content: String::new(),
             level: HeadingLvl::Level1,
         }
     }
