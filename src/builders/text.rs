@@ -126,6 +126,10 @@ impl HeadingBuilder {
         self.content = s;
         self
     }
+    pub fn level(mut self, l: HeadingLvl) -> Self {
+        self.level = l;
+        self
+    }
 }
 
 impl super::Builder for HeadingBuilder {
@@ -139,7 +143,8 @@ impl super::Builder for HeadingBuilder {
             content: self.content,
         })
     }
-    fn new() -> impl super::Builder {
+    #[allow(refining_impl_trait)]
+    fn new() -> Self {
         HeadingBuilder {
             content: String::new(),
             level: HeadingLvl::Level1,

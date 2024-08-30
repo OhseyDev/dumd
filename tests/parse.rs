@@ -27,6 +27,13 @@ fn parse_code() {
 
 #[test]
 fn parse_heading() {
+    assert_eq!(
+        Ok(builders::text::HeadingBuilder::new()
+            .content("Heading 1".to_string())
+            .build()
+            .unwrap()),
+        text::Heading::from_str("# Heading 1"),
+    )
 }
 
 #[test]

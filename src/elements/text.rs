@@ -53,13 +53,34 @@ impl FromStr for Heading {
                         return Err(crate::ParseError::UnexpectedChar('#'));
                     }
                     match tok {
-                        ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
-                        ParseToken::String(s) => Ok(Heading { level: HeadingLvl::Level1, content: s.clone() })
+                        ParseToken::RepeatSpecial(' ', _) => {
+                            let t = if let Some(t) = iter.next() {
+                                t
+                            } else {
+                                return Err(crate::ParseError::UnexpectedEnd);
+                            };
+                            match t {
+                                ParseToken::RepeatSpecial(c, _) => {
+                                    Err(crate::ParseError::UnexpectedChar(*c))
+                                }
+                                ParseToken::String(s) => Ok(Heading {
+                                    level: HeadingLvl::Level1,
+                                    content: s.clone(),
+                                }),
+                            }
+                        }
+                        ParseToken::RepeatSpecial(c, _) => {
+                            Err(crate::ParseError::UnexpectedChar(*c))
+                        }
+                        ParseToken::String(s) => Ok(Heading {
+                            level: HeadingLvl::Level1,
+                            content: s.clone(),
+                        }),
                     }
-                },
+                }
                 ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
                 ParseToken::String(s) => Err(crate::ParseError::UnexpectedString(s.clone())),
-            }
+            };
         }
         return Err(crate::ParseError::UnexpectedEnd);
     }

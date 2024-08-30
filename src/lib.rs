@@ -79,6 +79,13 @@ pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
                 }
                 src.push(c)
             }
+            '1'..='9' => {
+                if src.is_empty() {
+                    process_char(c, &mut last_c, &mut counter, &mut tokens, &mut src)
+                } else {
+                    src.push(c);
+                }
+            }
             ' ' => {
                 if src.is_empty() {
                     process_char(c, &mut last_c, &mut counter, &mut tokens, &mut src)
@@ -91,6 +98,8 @@ pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
     }
     if last_c != '\0' {
         tokens.push(ParseToken::RepeatSpecial(last_c, counter + 1))
+    } else if !src.is_empty() {
+        tokens.push(ParseToken::String(src))
     }
     return tokens;
 }
@@ -106,6 +115,14 @@ mod tests {
                 ParseToken::RepeatSpecial('*', 2)
             ],
             super::tokenize("**bold text**")
+        );
+        assert_eq!(
+            vec![
+                ParseToken::RepeatSpecial('#', 1),
+                ParseToken::RepeatSpecial(' ', 1),
+                ParseToken::String("Heading 1".to_string())
+            ],
+            super::tokenize("# Heading 1")
         );
         assert_eq!(
             vec![
