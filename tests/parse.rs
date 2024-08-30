@@ -10,16 +10,14 @@ fn parse_code() {
     assert_eq!(
         Ok(block::Code {
             content: "code".to_string().into_boxed_str(),
-            multiline: None
+            kind: block::CodeKind::None(2)
         }),
         block::Code::from_str("``code``")
     );
     assert_eq!(
         Ok(block::Code {
             content: "a type of code".to_string().into_boxed_str(),
-            multiline: Some(block::CodeKind::Unknown(
-                "code".to_string().into_boxed_str()
-            )),
+            kind: block::CodeKind::Unknown("code".to_string().into_boxed_str(), 3),
         }),
         block::Code::from_str("```code\na type of code\n```")
     );
