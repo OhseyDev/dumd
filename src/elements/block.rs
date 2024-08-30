@@ -7,9 +7,14 @@ pub enum CodeKind {
     Cpp,
     CStandard,
     CSharp,
-    Rust,
+    Go,
+    Haskell,
     Java,
     JavaScript,
+    Lua,
+    Python,
+    Ruby,
+    Rust,
     Unknown(Box<str>),
 }
 
@@ -17,6 +22,45 @@ pub enum CodeKind {
 pub struct Code {
     pub content: Box<str>,
     pub multiline: Option<CodeKind>,
+}
+
+impl FromStr for CodeKind {
+    type Err = crate::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "csharp" => Ok(CodeKind::CSharp),
+            "c" => Ok(CodeKind::CStandard),
+            "cpp" => Ok(CodeKind::Cpp),
+            "go" => Ok(CodeKind::Go),
+            "haskell" => Ok(CodeKind::Haskell),
+            "java" => Ok(CodeKind::Java),
+            "javascript" => Ok(CodeKind::JavaScript),
+            "lua" => Ok(CodeKind::Lua),
+            "python" => Ok(CodeKind::Python),
+            "ruby" => Ok(CodeKind::Ruby),
+            "rust" => Ok(CodeKind::Rust),
+            _ => Ok(CodeKind::Unknown(s.to_string().into_boxed_str())),
+        }
+    }
+}
+
+impl ToString for CodeKind {
+    fn to_string(&self) -> String {
+        match self {
+            CodeKind::CSharp => String::from("csharp"),
+            CodeKind::CStandard => String::from("c"),
+            CodeKind::Cpp => String::from("cpp"),
+            CodeKind::Go => String::from("go"),
+            CodeKind::Haskell => String::from("haskell"),
+            CodeKind::Java => String::from("java"),
+            CodeKind::JavaScript => String::from("javascript"),
+            CodeKind::Lua => String::from("lua"),
+            CodeKind::Python => String::from("python"),
+            CodeKind::Ruby => String::from("ruby"),
+            CodeKind::Rust => String::from("rust"),
+            CodeKind::Unknown(s) => s.to_string(),
+        }
+    }
 }
 
 impl FromStr for Code {
@@ -50,7 +94,7 @@ impl FromStr for Code {
                     });
                 }
                 ParseToken::RepeatSpecial('`', 3) => {
-                    let mut kind = String::new();
+                    let mut kind: String = String::new();
                     while let Some(tok) = iter.next() {
                         match tok {
                             ParseToken::RepeatSpecial('\n', _) => {
