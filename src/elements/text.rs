@@ -5,9 +5,23 @@ use url::Url;
 use crate::{tokenize, ParseToken};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LinkSource {
+    Url(Url),
+    Ref(Box<str>),
+    None,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Reference {
+    pub(crate) name: Box<str>,
+    pub(crate) title: Box<str>,
+    pub(crate) href: Url,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Link {
     pub(crate) name: Box<str>,
-    pub(crate) href: Url,
+    pub(crate) src: LinkSource,
     pub(crate) img: bool,
 }
 
@@ -297,33 +311,54 @@ fn process_link_item(iter: &mut Iter<ParseToken>, img: bool) -> Result<Item, cra
     } else {
         return Err(crate::ParseError::UnexpectedEnd);
     }
-    let mut src = String::new();
+    let mut src_str = String::new();
     while let Some(tok) = iter.next() {
         match tok {
-            ParseToken::RepeatSpecial(c, n) => src.push_str(&c.to_string().repeat(*n)),
-            ParseToken::String(s) => src.push_str(s),
+            ParseToken::RepeatSpecial(c, n) => src_str.push_str(&c.to_string().repeat(*n)),
+            ParseToken::String(s) => src_str.push_str(s),
         }
     }
-    if !src.ends_with(')') {
+    if !src_str.ends_with(')') {
         return Err(crate::ParseError::UnexpectedEnd);
     }
-    src.pop();
-    let u = url::Url::parse(&src);
-    if let Some(e) = u.as_ref().err() {
-        return Err(crate::ParseError::UrlError(e.clone()));
-    }
-    return Ok(Item::Link(Link {
-        name,
-        href: u.ok().unwrap(),
-        img,
-    }));
+    src_str.pop();
+    let u = url::Url::parse(&src_str);
+    let src = if let Some(e) = u.as_ref().err() {
+        for c in src_str.chars() {
+            match c {
+                '0'..='9' => {}
+                'A'..='Z' => {}
+                'a'..='z' => {}
+                '?' => {}
+                '!' => {}
+                '.' => {}
+                ',' => {}
+                ';' => {}
+                ':' => {}
+                '\'' => {}
+                '"' => {}
+                _ => return Err(crate::ParseError::InvalidUrl(e.clone())),
+            }
+        }
+        LinkSource::Ref(src_str.into_boxed_str())
+    } else {
+        LinkSource::Url(u.ok().unwrap())
+    };
+    return Ok(Item::Link(Link { name, src, img }));
 }
 
 impl FromStr for Item {
     type Err = crate::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let tokens = crate::tokenize(s);
-        return Self::parse(tokens.iter());
+        Self::parse(crate::tokenize(s).iter())
+    }
+}
+
+impl FromStr for Reference {
+    type Err = crate::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        _ = s;
+        todo!()
     }
 }
 
@@ -334,7 +369,12 @@ impl ToString for Item {
             Self::Italic(s) => format!("*{}*", s),
             Self::Bold(s) => format!("**{}**", s),
             Self::BoldItalic(s) => format!("***{}***", s),
-            Self::Link(l) => format!("{}[{}]({})", if l.img { "!" } else { "" }, l.name, l.href),
+            Self::Link(l) => format!(
+                "{}[{}]({})",
+                if l.img { "!" } else { "" },
+                l.name,
+                l.src.to_string()
+            ),
         };
     }
 }
@@ -345,5 +385,15 @@ impl ToString for Heading {
         content.push(' ');
         content.push_str(&self.content);
         content
+    }
+}
+
+impl ToString for LinkSource {
+    fn to_string(&self) -> String {
+        match self {
+            LinkSource::None => String::new(),
+            LinkSource::Ref(r) => r.to_string(),
+            LinkSource::Url(u) => u.to_string(),
+        }
     }
 }

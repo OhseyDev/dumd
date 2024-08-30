@@ -10,7 +10,7 @@ pub enum ParseError {
     UnexpectedChar(char),
     UnexpectedString(String),
     UnexpectedEnd,
-    UrlError(ParseErrorUrl),
+    InvalidUrl(ParseErrorUrl),
     IncompleteBuilderData,
 }
 

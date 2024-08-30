@@ -1,10 +1,9 @@
-use crate::elements::text::{Heading, HeadingLvl, Item, Link};
-use url::Url;
+use crate::elements::text::{Heading, HeadingLvl, Item, Link, LinkSource, Reference};
 
 #[derive(Debug, Clone)]
 pub struct LinkBuilder {
     name: String,
-    href: Option<Url>,
+    src: LinkSource,
     img: bool,
 }
 
@@ -79,7 +78,11 @@ impl LinkBuilder {
         self.name.push_str(s);
     }
     pub fn href(mut self, href: url::Url) -> Self {
-        self.href = Some(href);
+        self.src = LinkSource::Url(href);
+        self
+    }
+    pub fn reference(mut self, r: Reference) -> Self {
+        self.src = LinkSource::Ref(r.name.clone());
         self
     }
     pub fn make_img(mut self) -> Self {
@@ -100,14 +103,14 @@ impl super::Builder for LinkBuilder {
         if self.name.is_empty() {
             return Err(super::Error::IncompleteData);
         }
-        let href = if let Some(url) = self.href {
-            url
-        } else {
-            return Err(super::Error::IncompleteData);
+        if let LinkSource::Ref(s) = &self.src {
+            if s.is_empty() {
+                return Err(super::Error::IncompleteData);
+            }
         };
         Ok(Link {
             name: self.name.into_boxed_str(),
-            href,
+            src: self.src,
             img: self.img,
         })
     }
@@ -115,7 +118,7 @@ impl super::Builder for LinkBuilder {
     fn new() -> Self {
         LinkBuilder {
             name: String::new(),
-            href: None,
+            src: LinkSource::None,
             img: false,
         }
     }
