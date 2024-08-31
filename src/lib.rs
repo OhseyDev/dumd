@@ -57,7 +57,116 @@ fn process_char(
     *counter = 0;
 }
 
-#[inline]
+#[macro_export]
+macro_rules! token_expect_char1 {
+    ($tok:ident, $char:literal, $num:literal) => {
+        match $tok {
+            ParseToken::RepeatSpecial($char, $num) => {}
+            ParseToken::RepeatSpecial(c, _) => return Err(crate::ParseError::UnexpectedChar(*c)),
+            ParseToken::String(s) => return Err(crate::ParseError::UnexpectedString(s.to_owned())),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! token_expect_char {
+    ($iter:ident, $char:literal, $num:literal) => {
+        if let Some(t) = $iter.next() {
+            use crate::token_expect_char1;
+            token_expect_char1!(t, $char, $num);
+        } else {
+            return Err(crate::ParseError::UnexpectedEnd);
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! token_expect_end {
+    ($iter:ident) => {
+        if let Some(t) = $iter.next() {
+            return match t {
+                crate::ParseToken::String(s) => {
+                    Err(crate::ParseError::UnexpectedString(s.to_owned()))
+                }
+                crate::ParseToken::RepeatSpecial(c, _) => {
+                    Err(crate::ParseError::UnexpectedChar(*c))
+                }
+            };
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! token_ignore_char1 {
+    ($iter:ident, $char:literal, $tok:ident) => {
+        if let ParseToken::RepeatSpecial($char, _) = $tok {
+            if let Some(t) = $iter.next() {
+                t
+            } else {
+                return Err(crate::ParseError::UnexpectedEnd);
+            }
+        } else {
+            $tok
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! token_ignore_char {
+    ($iter:ident, $char:literal) => {
+        if let Some(t) = $iter.next() {
+            use crate::token_ignore_char1;
+            token_ignore_char1!($iter, $char, t)
+        } else {
+            return Err(crate::ParseError::UnexpectedEnd);
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! token_ignore_char_restricted1 {
+    ($iter:ident, $char:literal, $num:literal, $tok:ident) => {
+        if let ParseToken::RepeatSpecial($char, $num) = $tok {
+            if let Some(t) = $iter.next() {
+                (t, $num)
+            } else {
+                return Err(crate::ParseError::UnexpectedEnd);
+            }
+        } else {
+            ($tok, 0)
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! token_ignore_char_restricted {
+    ($iter:ident, $char:literal, $num:literal) => {
+        if let Some(t) = $iter.next() {
+            use crate::token_ignore_char_restricted1;
+            token_ignore_char_restricted1!($iter, $char, $num, t);
+        } else {
+            return Err(crate::ParseError::UnexpectedEnd);
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! token_combine_except {
+    ($iter:ident, $($clause:pat, $action:expr),+) => {{
+        let mut combined = String::new();
+        while let Some(t) = $iter.next() {
+            match t {
+                $($clause => $action,)+
+                crate::ParseToken::String(s) => combined.push_str(s),
+                crate::ParseToken::RepeatSpecial(c, n) => {
+                    combined.push_str(&c.to_string().repeat(*n))
+                }
+            }
+        }
+        combined
+    }};
+}
+
 pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
     let mut tokens = Vec::new();
     let mut last_c = '\0';

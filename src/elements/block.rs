@@ -1,6 +1,8 @@
-use std::str::FromStr;
+use std::{slice::Iter, str::FromStr};
 
 use crate::ParseToken;
+
+use super::Element;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CodeKind {
@@ -126,12 +128,37 @@ fn parse_inner(
 impl FromStr for Code {
     type Err = crate::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let tokens = crate::tokenize(s);
-        let mut iter = tokens.iter();
+        Self::from_str_internal(s)
+    }
+}
+
+impl ToString for Code {
+    fn to_string(&self) -> String {
+        let s = match &self.kind {
+            CodeKind::Cpp(c) => "`".repeat(*c) + "cpp",
+            CodeKind::CSharp(c) => "`".repeat(*c) + "csharp",
+            CodeKind::CStandard(c) => "`".repeat(*c) + "c",
+            CodeKind::Go(c) => "`".repeat(*c) + "go",
+            CodeKind::Haskell(c) => "`".repeat(*c) + "haskell",
+            CodeKind::Java(c) => "`".repeat(*c) + "java",
+            CodeKind::JavaScript(c) => "`".repeat(*c) + "javascript",
+            CodeKind::Lua(c) => "`".repeat(*c) + "lua",
+            CodeKind::Python(c) => "`".repeat(*c) + "python",
+            CodeKind::Ruby(c) => "`".repeat(*c) + "ruby",
+            CodeKind::Rust(c) => "`".repeat(*c) + "rust",
+            CodeKind::None(c) => "`".repeat(*c),
+            CodeKind::Unknown(s, c) => "`".repeat(*c) + s.to_string().as_str(),
+        };
+        format!("{}{}{}``", s, self.content, s)
+    }
+}
+
+impl super::Element for Code {
+    fn parse(iter: &mut Iter<ParseToken>) -> Result<Self, crate::ParseError> {
         if let Some(first_tok) = iter.next() {
             return match first_tok {
-                ParseToken::RepeatSpecial('`', 1) => parse_inner(&mut iter, 1),
-                ParseToken::RepeatSpecial('`', 2) => parse_inner(&mut iter, 2),
+                ParseToken::RepeatSpecial('`', 1) => parse_inner(iter, 1),
+                ParseToken::RepeatSpecial('`', 2) => parse_inner(iter, 2),
                 ParseToken::RepeatSpecial('`', n) => {
                     let mut kind: String = String::new();
                     while let Some(tok) = iter.next() {
@@ -180,26 +207,3 @@ impl FromStr for Code {
         return Err(crate::ParseError::EmptyDocument);
     }
 }
-
-impl ToString for Code {
-    fn to_string(&self) -> String {
-        let s = match &self.kind {
-            CodeKind::Cpp(c) => "`".repeat(*c) + "cpp",
-            CodeKind::CSharp(c) => "`".repeat(*c) + "csharp",
-            CodeKind::CStandard(c) => "`".repeat(*c) + "c",
-            CodeKind::Go(c) => "`".repeat(*c) + "go",
-            CodeKind::Haskell(c) => "`".repeat(*c) + "haskell",
-            CodeKind::Java(c) => "`".repeat(*c) + "java",
-            CodeKind::JavaScript(c) => "`".repeat(*c) + "javascript",
-            CodeKind::Lua(c) => "`".repeat(*c) + "lua",
-            CodeKind::Python(c) => "`".repeat(*c) + "python",
-            CodeKind::Ruby(c) => "`".repeat(*c) + "ruby",
-            CodeKind::Rust(c) => "`".repeat(*c) + "rust",
-            CodeKind::None(c) => "`".repeat(*c),
-            CodeKind::Unknown(s, c) => "`".repeat(*c) + s.to_string().as_str(),
-        };
-        format!("{}{}{}``", s, self.content, s)
-    }
-}
-
-impl super::Element for Code {}

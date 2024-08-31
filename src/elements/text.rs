@@ -2,7 +2,7 @@ use std::{slice::Iter, str::FromStr};
 
 use url::Url;
 
-use crate::{tokenize, ParseToken};
+use crate::{elements::Element, ParseToken};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LinkSource {
@@ -50,11 +50,8 @@ pub struct Heading {
     pub(crate) content: String,
 }
 
-impl FromStr for Heading {
-    type Err = crate::ParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let tokens = tokenize(s);
-        let mut iter = tokens.iter();
+impl Element for Heading {
+    fn parse(iter: &mut Iter<crate::ParseToken>) -> Result<Self, crate::ParseError> {
         if let Some(t) = iter.next() {
             return match t {
                 ParseToken::RepeatSpecial('#', n) => {
@@ -97,6 +94,13 @@ impl FromStr for Heading {
             };
         }
         return Err(crate::ParseError::UnexpectedEnd);
+    }
+}
+
+impl FromStr for Heading {
+    type Err = crate::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_str_internal(s)
     }
 }
 
@@ -206,16 +210,14 @@ impl Item {
             _ => false,
         }
     }
-    #[inline]
-    pub(super) fn parse(mut iter: Iter<ParseToken>) -> Result<Self, crate::ParseError> {
+}
+impl super::Element for Item {
+    fn parse(iter: &mut Iter<ParseToken>) -> Result<Self, crate::ParseError> {
         while let Some(first_tok) = iter.next() {
             match first_tok {
-                ParseToken::RepeatSpecial('!', 1) => return process_link_item(&mut iter, true),
-                ParseToken::RepeatSpecial('[', 1) => return process_link_item(&mut iter, false),
+                ParseToken::RepeatSpecial('!', 1) => return process_link_item(iter, true),
+                ParseToken::RepeatSpecial('[', 1) => return process_link_item(iter, false),
                 ParseToken::RepeatSpecial('*', n) => {
-                    if *n > 3 {
-                        return Err(crate::ParseError::UnexpectedChar('*'));
-                    }
                     let src = if let Some(tok) = iter.next() {
                         match tok {
                             ParseToken::RepeatSpecial(c, _) => {
@@ -229,9 +231,7 @@ impl Item {
                     if let Some(tok) = iter.next() {
                         match tok {
                             ParseToken::RepeatSpecial('*', m) => {
-                                if m > n {
-                                    return Err(crate::ParseError::UnexpectedChar('*'));
-                                } else if m < n {
+                                if m < n {
                                     return Err(crate::ParseError::UnexpectedEnd);
                                 } else {
                                     let mut i = 1;
@@ -293,37 +293,34 @@ fn process_link_item(iter: &mut Iter<ParseToken>, img: bool) -> Result<Item, cra
     } else {
         return Err(crate::ParseError::UnexpectedEnd);
     };
-    if let Some(tok) = iter.next() {
-        match tok {
-            ParseToken::RepeatSpecial(']', 1) => {}
-            ParseToken::RepeatSpecial(c, _) => return Err(crate::ParseError::UnexpectedChar(*c)),
-            ParseToken::String(s) => return Err(crate::ParseError::UnexpectedString(s.to_owned())),
-        }
-    } else {
-        return Err(crate::ParseError::UnexpectedEnd);
-    }
-    if let Some(tok) = iter.next() {
-        match tok {
-            ParseToken::RepeatSpecial('(', 1) => {}
-            ParseToken::RepeatSpecial(c, _) => return Err(crate::ParseError::UnexpectedChar(*c)),
-            ParseToken::String(s) => return Err(crate::ParseError::UnexpectedString(s.to_owned())),
-        }
-    } else {
-        return Err(crate::ParseError::UnexpectedEnd);
-    }
+    crate::token_expect_char!(iter, ']', 1);
+    crate::token_expect_char!(iter, '(', 1);
     let mut src_str = String::new();
-    while let Some(tok) = iter.next() {
+    let res = loop {
+        let tok = if let Some(tok) = iter.next() {
+            tok
+        } else {
+            break false;
+        };
         match tok {
+            ParseToken::RepeatSpecial(')', 1) => break true,
             ParseToken::RepeatSpecial(c, n) => src_str.push_str(&c.to_string().repeat(*n)),
             ParseToken::String(s) => src_str.push_str(s),
         }
-    }
-    if !src_str.ends_with(')') {
+    };
+    if !res {
         return Err(crate::ParseError::UnexpectedEnd);
+    } else if let Some(t) = iter.next() {
+        return Err(match t {
+            ParseToken::RepeatSpecial(c, _) => crate::ParseError::UnexpectedChar(*c),
+            ParseToken::String(s) => crate::ParseError::UnexpectedString(s.to_owned()),
+        });
     }
-    src_str.pop();
     let u = url::Url::parse(&src_str);
     let src = if let Some(e) = u.as_ref().err() {
+        if img {
+            return Err(crate::ParseError::InvalidUrl(e.to_owned()));
+        }
         for c in src_str.chars() {
             match c {
                 '0'..='9' => {}
@@ -350,15 +347,68 @@ fn process_link_item(iter: &mut Iter<ParseToken>, img: bool) -> Result<Item, cra
 impl FromStr for Item {
     type Err = crate::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(crate::tokenize(s).iter())
+        Self::from_str_internal(s)
+    }
+}
+
+impl super::Element for Reference {
+    fn parse(iter: &mut Iter<ParseToken>) -> Result<Self, crate::ParseError> {
+        return if let Some(t) = iter.next() {
+            match t {
+                ParseToken::RepeatSpecial('[', 1) => {
+                    let mut name = String::new();
+                    while let Some(t) = iter.next() {
+                        match t {
+                            ParseToken::String(s) => name.push_str(s),
+                            ParseToken::RepeatSpecial('!', n) => name.push_str(&"!".repeat(*n)),
+                            ParseToken::RepeatSpecial('?', n) => name.push_str(&"?".repeat(*n)),
+                            ParseToken::RepeatSpecial('.', n) => name.push_str(&".".repeat(*n)),
+                            ParseToken::RepeatSpecial(',', n) => name.push_str(&",".repeat(*n)),
+                            ParseToken::RepeatSpecial(';', n) => name.push_str(&";".repeat(*n)),
+                            ParseToken::RepeatSpecial(':', n) => name.push_str(&":".repeat(*n)),
+                            ParseToken::RepeatSpecial('\'', n) => name.push_str(&"'".repeat(*n)),
+                            ParseToken::RepeatSpecial('"', n) => name.push_str(&"\"".repeat(*n)),
+                            ParseToken::RepeatSpecial(c, _) => {
+                                return Err(crate::ParseError::UnexpectedChar(*c))
+                            }
+                        }
+                    }
+                    if name.is_empty() {
+                        return Err(crate::ParseError::UnexpectedEnd);
+                    }
+                    crate::token_expect_char!(iter, ']', 1);
+                    crate::token_expect_char!(iter, ':', 1);
+                    let t = crate::token_ignore_char!(iter, ' ');
+                    let (t, n) = crate::token_ignore_char_restricted1!(iter, '<', 1, t);
+                    let url = url::Url::parse(&crate::token_combine_except!(
+                        iter,
+                        ParseToken::RepeatSpecial('>', 1),
+                        {
+                            if n == 0 {
+                                return Err(crate::ParseError::UnexpectedChar('>'));
+                            }
+                            break;
+                        }
+                    ));
+                    if let Some(e) = url.err() {
+                        return Err(crate::ParseError::InvalidUrl(e));
+                    }
+
+                    todo!()
+                }
+                ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
+                ParseToken::String(s) => Err(crate::ParseError::UnexpectedString(s.to_owned())),
+            }
+        } else {
+            Err(crate::ParseError::EmptyDocument)
+        };
     }
 }
 
 impl FromStr for Reference {
     type Err = crate::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        _ = s;
-        todo!()
+        Self::from_str_internal(s)
     }
 }
 
@@ -395,5 +445,15 @@ impl ToString for LinkSource {
             LinkSource::Ref(r) => r.to_string(),
             LinkSource::Url(u) => u.to_string(),
         }
+    }
+}
+
+impl ToString for Reference {
+    fn to_string(&self) -> String {
+        let mut s = format!("[{}]: <{}>", self.name, self.href.to_string());
+        if !self.title.is_empty() {
+            s.push_str(&format!("({})", self.title))
+        }
+        return s;
     }
 }

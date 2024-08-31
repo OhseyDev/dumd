@@ -41,6 +41,10 @@ fn parse_text() {
         text::Item::from_str("**bold text**")
     );
     assert_eq!(
+        Err(dumd::ParseError::UnexpectedChar('?')),
+        text::Item::from_str("**bold text**?")
+    );
+    assert_eq!(
         Ok(text::Item::Italic(
             "italic text".to_string().into_boxed_str()
         )),
