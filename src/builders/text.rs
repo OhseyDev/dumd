@@ -1,13 +1,55 @@
 use crate::elements::text::{Heading, HeadingLvl, Item, Link, LinkSource, Reference};
 
-#[derive(Debug, Clone)]
-pub struct LinkBuilder {
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ReferenceBuilder {
     name: String,
-    src: LinkSource,
-    img: bool,
+    href: Option<url::Url>,
+    title: String,
 }
 
-#[derive(Debug)]
+impl ReferenceBuilder {
+    pub fn name(mut self, s: &str) -> Self {
+        self.name = s.to_string();
+        self
+    }
+    pub fn title(mut self, s: &str) -> Self {
+        self.title = s.to_string();
+        self
+    }
+    pub fn href(mut self, u: url::Url) -> Self {
+        self.href = Some(u);
+        self
+    }
+}
+
+impl super::Builder for ReferenceBuilder {
+    type Output = Reference;
+    fn build(self) -> Result<Self::Output, super::Error> {
+        let url = if let Some(u) = self.href {
+            u
+        } else {
+            return Err(super::Error::IncompleteData);
+        };
+        if self.name.is_empty() {
+            return Err(super::Error::IncompleteData);
+        }
+        Ok(Self::Output {
+            name: self.name.into_boxed_str(),
+            title: self.title.into_boxed_str(),
+            href: url,
+        })
+    }
+    #[allow(refining_impl_trait)]
+    fn new() -> Self {
+        Self {
+            name: String::new(),
+            href: None,
+            title: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ItemBuilder {
     Bold(String),
     BoldItalic(String),
@@ -53,17 +95,25 @@ impl super::Builder for ItemBuilder {
     type Output = Item;
     fn build(self) -> Result<Self::Output, super::Error> {
         match self {
-            Self::Bold(s) => Ok(Item::Bold(s.into_boxed_str())),
-            Self::BoldItalic(s) => Ok(Item::BoldItalic(s.into_boxed_str())),
-            Self::Def(s) => Ok(Item::Def(s.into_boxed_str())),
-            Self::Italic(s) => Ok(Item::Italic(s.into_boxed_str())),
-            Self::Link(l) => Ok(Item::Link(l)),
+            Self::Bold(s) => Ok(Self::Output::Bold(s.into_boxed_str())),
+            Self::BoldItalic(s) => Ok(Self::Output::BoldItalic(s.into_boxed_str())),
+            Self::Def(s) => Ok(Self::Output::Def(s.into_boxed_str())),
+            Self::Italic(s) => Ok(Self::Output::Italic(s.into_boxed_str())),
+            Self::Link(l) => Ok(Self::Output::Link(l)),
             Self::Undefined => Err(super::Error::IncompleteData),
         }
     }
-    fn new() -> impl super::Builder + Sized {
+    #[allow(refining_impl_trait)]
+    fn new() -> Self {
         ItemBuilder::Undefined
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LinkBuilder {
+    name: String,
+    src: LinkSource,
+    img: bool,
 }
 
 impl LinkBuilder {
@@ -91,12 +141,6 @@ impl LinkBuilder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct HeadingBuilder {
-    content: String,
-    level: HeadingLvl,
-}
-
 impl super::Builder for LinkBuilder {
     type Output = Link;
     fn build(self) -> Result<Self::Output, super::Error> {
@@ -108,7 +152,7 @@ impl super::Builder for LinkBuilder {
                 return Err(super::Error::IncompleteData);
             }
         };
-        Ok(Link {
+        Ok(Self::Output {
             name: self.name.into_boxed_str(),
             src: self.src,
             img: self.img,
@@ -122,6 +166,12 @@ impl super::Builder for LinkBuilder {
             img: false,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct HeadingBuilder {
+    content: String,
+    level: HeadingLvl,
 }
 
 impl HeadingBuilder {
@@ -141,7 +191,7 @@ impl super::Builder for HeadingBuilder {
         if self.content.is_empty() {
             return Err(super::Error::IncompleteData);
         }
-        Ok(Heading {
+        Ok(Self::Output {
             level: self.level,
             content: self.content,
         })

@@ -5,44 +5,7 @@ use url::Url;
 use crate::{elements::Element, ParseToken};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum LinkSource {
-    Url(Url),
-    Ref(Box<str>),
-    None,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Reference {
-    pub(crate) name: Box<str>,
-    pub(crate) title: Box<str>,
-    pub(crate) href: Url,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Link {
-    pub(crate) name: Box<str>,
-    pub(crate) src: LinkSource,
-    pub(crate) img: bool,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum HeadingLvl {
-    Level1,
-    Level2,
-    Level3,
-    Level4,
-    Level5,
-    Level6,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Item {
-    Bold(Box<str>),
-    BoldItalic(Box<str>),
-    Def(Box<str>),
-    Italic(Box<str>),
-    Link(Link),
-}
+pub struct Paragraph {}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Heading {
@@ -104,8 +67,24 @@ impl FromStr for Heading {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Paragraph {}
+impl ToString for Heading {
+    fn to_string(&self) -> String {
+        let mut content = "#".repeat(self.level.into());
+        content.push(' ');
+        content.push_str(&self.content);
+        content
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum HeadingLvl {
+    Level1,
+    Level2,
+    Level3,
+    Level4,
+    Level5,
+    Level6,
+}
 
 impl HeadingLvl {
     pub fn increment(self) -> Self {
@@ -185,6 +164,35 @@ pub enum Quote<'a> {
     Items(Box<[Item]>),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LinkSource {
+    Url(Url),
+    Ref(Box<str>),
+    None,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Link {
+    pub(crate) name: Box<str>,
+    pub(crate) src: LinkSource,
+    pub(crate) img: bool,
+}
+
+impl Into<Item> for Link {
+    fn into(self) -> Item {
+        Item::Link(self)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Item {
+    Bold(Box<str>),
+    BoldItalic(Box<str>),
+    Def(Box<str>),
+    Italic(Box<str>),
+    Link(Link),
+}
+
 impl Item {
     pub fn asterick(&mut self) {
         *self = match self {
@@ -211,6 +219,24 @@ impl Item {
         }
     }
 }
+
+impl ToString for Item {
+    fn to_string(&self) -> String {
+        return match self {
+            Self::Def(s) => s.to_string(),
+            Self::Italic(s) => format!("*{}*", s),
+            Self::Bold(s) => format!("**{}**", s),
+            Self::BoldItalic(s) => format!("***{}***", s),
+            Self::Link(l) => format!(
+                "{}[{}]({})",
+                if l.img { "!" } else { "" },
+                l.name,
+                l.src.to_string()
+            ),
+        };
+    }
+}
+
 impl super::Element for Item {
     fn parse(iter: &mut Iter<ParseToken>) -> Result<Self, crate::ParseError> {
         while let Some(first_tok) = iter.next() {
@@ -351,6 +377,13 @@ impl FromStr for Item {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Reference {
+    pub(crate) name: Box<str>,
+    pub(crate) title: Box<str>,
+    pub(crate) href: Url,
+}
+
 impl super::Element for Reference {
     fn parse(iter: &mut Iter<ParseToken>) -> Result<Self, crate::ParseError> {
         return if let Some(t) = iter.next() {
@@ -409,32 +442,6 @@ impl FromStr for Reference {
     type Err = crate::ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::from_str_internal(s)
-    }
-}
-
-impl ToString for Item {
-    fn to_string(&self) -> String {
-        return match self {
-            Self::Def(s) => s.to_string(),
-            Self::Italic(s) => format!("*{}*", s),
-            Self::Bold(s) => format!("**{}**", s),
-            Self::BoldItalic(s) => format!("***{}***", s),
-            Self::Link(l) => format!(
-                "{}[{}]({})",
-                if l.img { "!" } else { "" },
-                l.name,
-                l.src.to_string()
-            ),
-        };
-    }
-}
-
-impl ToString for Heading {
-    fn to_string(&self) -> String {
-        let mut content = "#".repeat(self.level.into());
-        content.push(' ');
-        content.push_str(&self.content);
-        content
     }
 }
 

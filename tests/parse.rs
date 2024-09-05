@@ -24,6 +24,18 @@ fn parse_code() {
 }
 
 #[test]
+fn parse_reference() {
+    assert_eq!(
+        Ok(builders::text::ReferenceBuilder::new()
+            .name("1")
+            .href(url::Url::parse("https://www.example.com/").unwrap())
+            .build()
+            .unwrap()),
+        text::Reference::from_str("[1]: <https://www.example.com/>")
+    );
+}
+
+#[test]
 fn parse_heading() {
     assert_eq!(
         Ok(builders::text::HeadingBuilder::new()
@@ -31,7 +43,7 @@ fn parse_heading() {
             .build()
             .unwrap()),
         text::Heading::from_str("# Heading 1"),
-    )
+    );
 }
 
 #[test]
@@ -57,13 +69,12 @@ fn parse_text() {
         text::Item::from_str("***bold italic text***")
     );
     assert_eq!(
-        Ok(text::Item::Link(
-            builders::text::LinkBuilder::new()
-                .name("link".to_string())
-                .href(url::Url::parse("https://example.com").expect(""))
-                .build()
-                .expect("")
-        )),
+        Ok(builders::text::LinkBuilder::new()
+            .name("link".to_string())
+            .href(url::Url::parse("https://example.com").expect(""))
+            .build()
+            .expect("")
+            .into()),
         text::Item::from_str("[link](https://example.com)")
     );
     assert_eq!(
