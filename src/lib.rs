@@ -58,30 +58,7 @@ fn process_char(
 }
 
 #[macro_export]
-macro_rules! token_expect_char1 {
-    ($tok:ident, $char:literal, $num:literal) => {
-        match $tok {
-            ParseToken::RepeatSpecial($char, $num) => {}
-            ParseToken::RepeatSpecial(c, _) => return Err(crate::ParseError::UnexpectedChar(*c)),
-            ParseToken::String(s) => return Err(crate::ParseError::UnexpectedString(s.to_owned())),
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! token_expect_char {
-    ($iter:ident, $char:literal, $num:literal) => {
-        if let Some(t) = $iter.next() {
-            use crate::token_expect_char1;
-            token_expect_char1!(t, $char, $num);
-        } else {
-            return Err(crate::ParseError::UnexpectedEnd);
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! token_expect_end {
+macro_rules! token_expect {
     ($iter:ident) => {
         if let Some(t) = $iter.next() {
             return match t {
@@ -94,10 +71,32 @@ macro_rules! token_expect_end {
             };
         }
     };
+    ($iter:ident, $char:literal, $num:literal) => {
+        if let Some(t) = $iter.next() {
+            match t {
+                ParseToken::RepeatSpecial($char, $num) => {}
+                ParseToken::RepeatSpecial(c, _) => {
+                    return Err(crate::ParseError::UnexpectedChar(*c))
+                }
+                ParseToken::String(s) => {
+                    return Err(crate::ParseError::UnexpectedString(s.to_owned()))
+                }
+            }
+        } else {
+            return Err(crate::ParseError::UnexpectedEnd);
+        }
+    };
 }
 
 #[macro_export]
-macro_rules! token_ignore_char1 {
+macro_rules! token_ignore_char {
+    ($iter:ident, $char:literal) => {
+        if let Some(t) = $iter.next() {
+            crate::token_ignore_char!($iter, $char, t)
+        } else {
+            return Err(crate::ParseError::UnexpectedEnd);
+        }
+    };
     ($iter:ident, $char:literal, $tok:ident) => {
         if let ParseToken::RepeatSpecial($char, _) = $tok {
             if let Some(t) = $iter.next() {
@@ -109,22 +108,20 @@ macro_rules! token_ignore_char1 {
             $tok
         }
     };
-}
-
-#[macro_export]
-macro_rules! token_ignore_char {
-    ($iter:ident, $char:literal) => {
+    ($iter:ident, $char:literal, $else:expr) => {
         if let Some(t) = $iter.next() {
-            use crate::token_ignore_char1;
-            token_ignore_char1!($iter, $char, t)
+            crate::token_ignore_char!($iter, $char, t)
+        } else {
+            $else
+        }
+    };
+    ($iter:ident, $char:literal, $num:literal) => {
+        if let Some(t) = $iter.next() {
+            crate::token_ignore_char!($iter, $char, $num, t);
         } else {
             return Err(crate::ParseError::UnexpectedEnd);
         }
     };
-}
-
-#[macro_export]
-macro_rules! token_ignore_char_restricted1 {
     ($iter:ident, $char:literal, $num:literal, $tok:ident) => {
         if let ParseToken::RepeatSpecial($char, $num) = $tok {
             if let Some(t) = $iter.next() {
@@ -134,18 +131,6 @@ macro_rules! token_ignore_char_restricted1 {
             }
         } else {
             ($tok, 0)
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! token_ignore_char_restricted {
-    ($iter:ident, $char:literal, $num:literal) => {
-        if let Some(t) = $iter.next() {
-            use crate::token_ignore_char_restricted1;
-            token_ignore_char_restricted1!($iter, $char, $num, t);
-        } else {
-            return Err(crate::ParseError::UnexpectedEnd);
         }
     };
 }
@@ -162,6 +147,21 @@ macro_rules! token_combine_except {
                     combined.push_str(&c.to_string().repeat(*n))
                 }
             }
+        }
+        combined
+    }};
+    ($first:ident, $iter:ident, $($clause:pat, $action:expr),+) => {{
+        let mut combined = String::new();
+        let mut item = Some($first);
+        while let Some(t) = item {
+            match t {
+                $($clause => $action,)+
+                crate::ParseToken::String(s) => combined.push_str(s),
+                crate::ParseToken::RepeatSpecial(c, n) => {
+                    combined.push_str(&c.to_string().repeat(*n))
+                }
+            }
+            item = $iter.next();
         }
         combined
     }};

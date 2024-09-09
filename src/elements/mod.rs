@@ -20,7 +20,7 @@ pub(crate) trait Element:
                 Err(e) => return Err(e),
             }
         };
-        crate::token_expect_end!(iter);
+        crate::token_expect!(iter);
         return Ok(val);
     }
 }

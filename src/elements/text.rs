@@ -319,8 +319,8 @@ fn process_link_item(iter: &mut Iter<ParseToken>, img: bool) -> Result<Item, cra
     } else {
         return Err(crate::ParseError::UnexpectedEnd);
     };
-    crate::token_expect_char!(iter, ']', 1);
-    crate::token_expect_char!(iter, '(', 1);
+    crate::token_expect!(iter, ']', 1);
+    crate::token_expect!(iter, '(', 1);
     let mut src_str = String::new();
     let res = loop {
         let tok = if let Some(tok) = iter.next() {
@@ -401,6 +401,22 @@ impl super::Element for Reference {
                             ParseToken::RepeatSpecial(':', n) => name.push_str(&":".repeat(*n)),
                             ParseToken::RepeatSpecial('\'', n) => name.push_str(&"'".repeat(*n)),
                             ParseToken::RepeatSpecial('"', n) => name.push_str(&"\"".repeat(*n)),
+                            ParseToken::RepeatSpecial('0', n) => name.push_str(&"0".repeat(*n)),
+                            ParseToken::RepeatSpecial('1', n) => name.push_str(&"1".repeat(*n)),
+                            ParseToken::RepeatSpecial('2', n) => name.push_str(&"2".repeat(*n)),
+                            ParseToken::RepeatSpecial('3', n) => name.push_str(&"3".repeat(*n)),
+                            ParseToken::RepeatSpecial('4', n) => name.push_str(&"4".repeat(*n)),
+                            ParseToken::RepeatSpecial('5', n) => name.push_str(&"5".repeat(*n)),
+                            ParseToken::RepeatSpecial('6', n) => name.push_str(&"6".repeat(*n)),
+                            ParseToken::RepeatSpecial('7', n) => name.push_str(&"7".repeat(*n)),
+                            ParseToken::RepeatSpecial('8', n) => name.push_str(&"8".repeat(*n)),
+                            ParseToken::RepeatSpecial('9', n) => name.push_str(&"9".repeat(*n)),
+                            ParseToken::RepeatSpecial(']', 1) => {
+                                if name.is_empty() {
+                                    return Err(crate::ParseError::UnexpectedChar(']'));
+                                }
+                                break;
+                            }
                             ParseToken::RepeatSpecial(c, _) => {
                                 return Err(crate::ParseError::UnexpectedChar(*c))
                             }
@@ -409,11 +425,11 @@ impl super::Element for Reference {
                     if name.is_empty() {
                         return Err(crate::ParseError::UnexpectedEnd);
                     }
-                    crate::token_expect_char!(iter, ']', 1);
-                    crate::token_expect_char!(iter, ':', 1);
+                    crate::token_expect!(iter, ':', 1);
                     let t = crate::token_ignore_char!(iter, ' ');
-                    let (t, n) = crate::token_ignore_char_restricted1!(iter, '<', 1, t);
-                    let url = url::Url::parse(&crate::token_combine_except!(
+                    let (t, n) = crate::token_ignore_char!(iter, '<', 1, t);
+                    let href = &crate::token_combine_except!(
+                        t,
                         iter,
                         ParseToken::RepeatSpecial('>', 1),
                         {
@@ -421,13 +437,74 @@ impl super::Element for Reference {
                                 return Err(crate::ParseError::UnexpectedChar('>'));
                             }
                             break;
+                        },
+                        ParseToken::RepeatSpecial(' ', 1),
+                        {
+                            if n == 0 {
+                                return Err(crate::ParseError::UnexpectedChar(' '));
+                            }
+                            break;
                         }
-                    ));
-                    if let Some(e) = url.err() {
-                        return Err(crate::ParseError::InvalidUrl(e));
-                    }
-
-                    todo!()
+                    );
+                    let url = {
+                        let url = url::Url::parse(&href);
+                        if let Some(e) = url.as_ref().err() {
+                            return Err(crate::ParseError::InvalidUrl(e.clone()));
+                        }
+                        url.unwrap()
+                    };
+                    let t = crate::token_ignore_char!(
+                        iter,
+                        ' ',
+                        return Ok(Reference {
+                            name: name.into_boxed_str(),
+                            title: String::new().into_boxed_str(),
+                            href: url,
+                        })
+                    );
+                    let (t, n) = crate::token_ignore_char!(iter, '"', 1, t);
+                    let t = if n == 0 {
+                        crate::token_ignore_char!(iter, '(', 1, t).0
+                    } else {
+                        t
+                    };
+                    let title = crate::token_combine_except!(
+                        t,
+                        iter,
+                        ParseToken::RepeatSpecial(')', 1),
+                        {
+                            if n == 0 {
+                                return Err(crate::ParseError::UnexpectedChar(')'));
+                            }
+                            break;
+                        },
+                        ParseToken::RepeatSpecial('(', 1),
+                        {
+                            if n == 0 {
+                                return Err(crate::ParseError::UnexpectedChar('('));
+                            }
+                            break;
+                        },
+                        ParseToken::RepeatSpecial('"', 1),
+                        {
+                            if n == 0 {
+                                return Err(crate::ParseError::UnexpectedChar('"'));
+                            }
+                            break;
+                        },
+                        ParseToken::RepeatSpecial('\'', 1),
+                        {
+                            if n == 0 {
+                                return Err(crate::ParseError::UnexpectedChar('\''));
+                            }
+                            break;
+                        }
+                    );
+                    return Ok(Reference {
+                        name: name.into_boxed_str(),
+                        title: title.into_boxed_str(),
+                        href: url,
+                    });
                 }
                 ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
                 ParseToken::String(s) => Err(crate::ParseError::UnexpectedString(s.to_owned())),
