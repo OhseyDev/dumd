@@ -1,7 +1,7 @@
 extern crate dumd;
 extern crate url;
 
-use dumd::builders::{self, Builder};
+use dumd::Builder;
 use dumd::elements::{block, text};
 use std::str::FromStr;
 
@@ -26,7 +26,7 @@ fn parse_code() {
 #[test]
 fn parse_reference() {
     assert_eq!(
-        Ok(builders::text::ReferenceBuilder::new()
+        Ok(text::ReferenceBuilder::new()
             .name("1")
             .href(url::Url::parse("https://www.example.com/").unwrap())
             .build()
@@ -38,7 +38,7 @@ fn parse_reference() {
 #[test]
 fn parse_heading() {
     assert_eq!(
-        Ok(builders::text::HeadingBuilder::new()
+        Ok(text::HeadingBuilder::new()
             .content("Heading 1".to_string())
             .build()
             .unwrap()),
@@ -69,7 +69,7 @@ fn parse_text() {
         text::Item::from_str("***bold italic text***")
     );
     assert_eq!(
-        Ok(builders::text::LinkBuilder::new()
+        Ok(text::LinkBuilder::new()
             .name("link".to_string())
             .href(url::Url::parse("https://example.com").expect(""))
             .build()
@@ -79,7 +79,7 @@ fn parse_text() {
     );
     assert_eq!(
         Ok(text::Item::Link(
-            builders::text::LinkBuilder::new()
+            text::LinkBuilder::new()
                 .name("link".to_string())
                 .href(url::Url::parse("https://example.com").expect(""))
                 .make_img()

@@ -207,3 +207,44 @@ impl super::Element for Code {
         return Err(crate::ParseError::EmptyDocument);
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CodeBuilder {
+    content: String,
+    kind: Option<CodeKind>,
+}
+
+impl CodeBuilder {
+    pub fn content(mut self, c: &str) -> Self {
+        self.content = c.to_string();
+        self
+    }
+    pub fn kind(mut self, k: CodeKind) -> Self {
+        self.kind = Some(k);
+        self
+    }
+}
+
+impl crate::Builder for CodeBuilder {
+    type Output = Code;
+
+    fn build(self) -> Result<Self::Output, crate::Error> {
+        let kind = if let Some(k) = self.kind {
+            k
+        } else {
+            return Err(crate::Error::IncompleteData);
+        };
+        Ok(Code {
+            content: self.content.into_boxed_str(),
+            kind
+        })
+    }
+    
+    #[allow(refining_impl_trait)]
+    fn new() -> Self {
+        Self {
+            content: String::new(),
+            kind: None
+        }
+    }
+}
