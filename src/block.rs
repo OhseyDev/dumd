@@ -2,8 +2,6 @@ use std::{slice::Iter, str::FromStr};
 
 use crate::ParseToken;
 
-use super::Element;
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CodeKind {
     Cpp(usize),
@@ -125,13 +123,6 @@ fn parse_inner(
     };
 }
 
-impl FromStr for Code {
-    type Err = crate::ParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_str_internal(s)
-    }
-}
-
 impl ToString for Code {
     fn to_string(&self) -> String {
         let s = match &self.kind {
@@ -236,15 +227,18 @@ impl crate::Builder for CodeBuilder {
         };
         Ok(Code {
             content: self.content.into_boxed_str(),
-            kind
+            kind,
         })
     }
-    
-    #[allow(refining_impl_trait)]
-    fn new() -> Self {
+}
+
+impl Default for CodeBuilder {
+    fn default() -> Self {
         Self {
             content: String::new(),
-            kind: None
+            kind: None,
         }
     }
 }
+
+crate::impl_from_str!(Code);

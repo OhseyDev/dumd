@@ -1,5 +1,11 @@
-pub mod elements;
+pub mod block;
+pub mod list;
+pub mod text;
 
+#[cfg(test)]
+mod tests;
+
+use std::slice::Iter;
 use url::ParseError as ParseErrorUrl;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,10 +19,13 @@ pub enum ParseError {
     IncompleteBuilderData,
 }
 
-pub trait Builder {
+pub trait Builder: Default {
     type Output;
-    fn new() -> impl Builder + Sized;
     fn build(self) -> Result<Self::Output, Error>;
+}
+
+pub(crate) trait Element: ToString + Sized {
+    fn parse(iter: &mut Iter<ParseToken>) -> Result<Self, ParseError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -65,6 +74,28 @@ fn process_char(
     }
     *last_c = c;
     *counter = 0;
+}
+
+#[macro_export]
+macro_rules! impl_from_str {
+    ($type:ident) => {
+        impl std::str::FromStr for $type {
+            type Err = crate::ParseError;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                use crate::Element;
+                let tokens = crate::tokenize(s);
+                let mut iter = tokens.iter();
+                let val = {
+                    match Self::parse(&mut iter) {
+                        Ok(t) => t,
+                        Err(e) => return Err(e),
+                    }
+                };
+                crate::token_expect!(iter);
+                return Ok(val);
+            }
+        }
+    };
 }
 
 #[macro_export]
@@ -221,63 +252,4 @@ pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
         tokens.push(ParseToken::String(src))
     }
     return tokens;
-}
-
-mod tests {
-    #[test]
-    fn tokenize() {
-        use super::ParseToken;
-        assert_eq!(
-            vec![
-                ParseToken::RepeatSpecial('*', 2),
-                ParseToken::String("bold text".to_string()),
-                ParseToken::RepeatSpecial('*', 2)
-            ],
-            super::tokenize("**bold text**")
-        );
-        assert_eq!(
-            vec![
-                ParseToken::RepeatSpecial('#', 1),
-                ParseToken::RepeatSpecial(' ', 1),
-                ParseToken::String("Heading 1".to_string())
-            ],
-            super::tokenize("# Heading 1")
-        );
-        assert_eq!(
-            vec![
-                ParseToken::RepeatSpecial('!', 1),
-                ParseToken::RepeatSpecial('[', 1),
-                ParseToken::String("link".to_string()),
-                ParseToken::RepeatSpecial(']', 1),
-                ParseToken::RepeatSpecial('(', 1),
-                ParseToken::String("https".to_string()),
-                ParseToken::RepeatSpecial(':', 1),
-                ParseToken::RepeatSpecial('/', 2),
-                ParseToken::String("example".to_string()),
-                ParseToken::RepeatSpecial('.', 1),
-                ParseToken::String("com".to_string()),
-                ParseToken::RepeatSpecial(')', 1),
-            ],
-            super::tokenize("![link](https://example.com)")
-        );
-        assert_eq!(
-            vec![
-                ParseToken::RepeatSpecial('`', 2),
-                ParseToken::String("code".to_string()),
-                ParseToken::RepeatSpecial('`', 2)
-            ],
-            super::tokenize("``code``")
-        );
-        assert_eq!(
-            vec![
-                ParseToken::RepeatSpecial('`', 3),
-                ParseToken::String("code".to_string()),
-                ParseToken::RepeatSpecial('\n', 1),
-                ParseToken::String("a type of code".to_string()),
-                ParseToken::RepeatSpecial('\n', 1),
-                ParseToken::RepeatSpecial('`', 3)
-            ],
-            super::tokenize("```code\na type of code\n```")
-        );
-    }
 }

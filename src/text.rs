@@ -1,8 +1,8 @@
-use std::{slice::Iter, str::FromStr};
+use std::slice::Iter;
 
 use url::Url;
 
-use crate::{elements::Element, ParseToken};
+use crate::{Element, ParseToken};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Paragraph {}
@@ -57,13 +57,6 @@ impl Element for Heading {
             };
         }
         return Err(crate::ParseError::UnexpectedEnd);
-    }
-}
-
-impl FromStr for Heading {
-    type Err = crate::ParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_str_internal(s)
     }
 }
 
@@ -370,13 +363,6 @@ fn process_link_item(iter: &mut Iter<ParseToken>, img: bool) -> Result<Item, cra
     return Ok(Item::Link(Link { name, src, img }));
 }
 
-impl FromStr for Item {
-    type Err = crate::ParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_str_internal(s)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Reference {
     pub(crate) name: Box<str>,
@@ -515,13 +501,6 @@ impl super::Element for Reference {
     }
 }
 
-impl FromStr for Reference {
-    type Err = crate::ParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_str_internal(s)
-    }
-}
-
 impl ToString for LinkSource {
     fn to_string(&self) -> String {
         match self {
@@ -542,7 +521,7 @@ impl ToString for Reference {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ReferenceBuilder {
     name: String,
     href: Option<url::Url>,
@@ -580,14 +559,6 @@ impl crate::Builder for ReferenceBuilder {
             title: self.title.into_boxed_str(),
             href: url,
         })
-    }
-    #[allow(refining_impl_trait)]
-    fn new() -> Self {
-        Self {
-            name: String::new(),
-            href: None,
-            title: String::new(),
-        }
     }
 }
 
@@ -645,13 +616,15 @@ impl crate::Builder for ItemBuilder {
             Self::Undefined => Err(crate::Error::IncompleteData),
         }
     }
-    #[allow(refining_impl_trait)]
-    fn new() -> Self {
+}
+
+impl Default for ItemBuilder {
+    fn default() -> Self {
         ItemBuilder::Undefined
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LinkBuilder {
     name: String,
     src: LinkSource,
@@ -700,17 +673,21 @@ impl crate::Builder for LinkBuilder {
             img: self.img,
         })
     }
-    #[allow(refining_impl_trait)]
-    fn new() -> Self {
-        LinkBuilder {
-            name: String::new(),
-            src: LinkSource::None,
-            img: false,
-        }
+}
+
+impl Default for LinkSource {
+    fn default() -> Self {
+        Self::None
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+impl Default for HeadingLvl {
+    fn default() -> Self {
+        Self::Level1
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct HeadingBuilder {
     content: String,
     level: HeadingLvl,
@@ -738,11 +715,8 @@ impl crate::Builder for HeadingBuilder {
             content: self.content,
         })
     }
-    #[allow(refining_impl_trait)]
-    fn new() -> Self {
-        HeadingBuilder {
-            content: String::new(),
-            level: HeadingLvl::Level1,
-        }
-    }
 }
+
+crate::impl_from_str!(Heading);
+crate::impl_from_str!(Item);
+crate::impl_from_str!(Reference);

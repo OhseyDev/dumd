@@ -1,8 +1,5 @@
-extern crate dumd;
-extern crate url;
-
-use dumd::Builder;
-use dumd::elements::{block, text};
+use super::{block, text};
+use super::Builder;
 use std::str::FromStr;
 
 #[test]
@@ -24,9 +21,66 @@ fn parse_code() {
 }
 
 #[test]
+fn tokenize() {
+    use super::ParseToken;
+    assert_eq!(
+        vec![
+            ParseToken::RepeatSpecial('*', 2),
+            ParseToken::String("bold text".to_string()),
+            ParseToken::RepeatSpecial('*', 2),
+        ],
+        super::tokenize("**bold text**")
+    );
+    assert_eq!(
+        vec![
+            ParseToken::RepeatSpecial('#', 1),
+            ParseToken::RepeatSpecial(' ', 1),
+            ParseToken::String("Heading 1".to_string()),
+        ],
+        super::tokenize("# Heading 1")
+    );
+    assert_eq!(
+        vec![
+            ParseToken::RepeatSpecial('!', 1),
+            ParseToken::RepeatSpecial('[', 1),
+            ParseToken::String("link".to_string()),
+            ParseToken::RepeatSpecial(']', 1),
+            ParseToken::RepeatSpecial('(', 1),
+            ParseToken::String("https".to_string()),
+            ParseToken::RepeatSpecial(':', 1),
+            ParseToken::RepeatSpecial('/', 2),
+            ParseToken::String("example".to_string()),
+            ParseToken::RepeatSpecial('.', 1),
+            ParseToken::String("com".to_string()),
+            ParseToken::RepeatSpecial(')', 1)
+        ],
+        super::tokenize("![link](https://example.com)")
+    );
+    assert_eq!(
+        vec![
+            ParseToken::RepeatSpecial('`', 3),
+            ParseToken::String("code".to_string()),
+            ParseToken::RepeatSpecial('\n', 1),
+            ParseToken::String("a type of code".to_string()),
+            ParseToken::RepeatSpecial('\n', 1),
+            ParseToken::RepeatSpecial('`', 3)
+        ],
+        super::tokenize("```code\na type of code\n```")
+    );
+    assert_eq!(
+        vec![
+            ParseToken::RepeatSpecial('`', 2),
+            ParseToken::String("code".to_string()),
+            ParseToken::RepeatSpecial('`', 2)
+        ],
+        super::tokenize("``code``")
+    )
+}
+
+#[test]
 fn parse_reference() {
     assert_eq!(
-        Ok(text::ReferenceBuilder::new()
+        Ok(text::ReferenceBuilder::default()
             .name("1")
             .href(url::Url::parse("https://www.example.com/").unwrap())
             .build()
@@ -38,7 +92,7 @@ fn parse_reference() {
 #[test]
 fn parse_heading() {
     assert_eq!(
-        Ok(text::HeadingBuilder::new()
+        Ok(text::HeadingBuilder::default()
             .content("Heading 1".to_string())
             .build()
             .unwrap()),
@@ -53,7 +107,7 @@ fn parse_text() {
         text::Item::from_str("**bold text**")
     );
     assert_eq!(
-        Err(dumd::ParseError::UnexpectedChar('?')),
+        Err(crate::ParseError::UnexpectedChar('?')),
         text::Item::from_str("**bold text**?")
     );
     assert_eq!(
@@ -69,7 +123,7 @@ fn parse_text() {
         text::Item::from_str("***bold italic text***")
     );
     assert_eq!(
-        Ok(text::LinkBuilder::new()
+        Ok(text::LinkBuilder::default()
             .name("link".to_string())
             .href(url::Url::parse("https://example.com").expect(""))
             .build()
@@ -79,7 +133,7 @@ fn parse_text() {
     );
     assert_eq!(
         Ok(text::Item::Link(
-            text::LinkBuilder::new()
+            text::LinkBuilder::default()
                 .name("link".to_string())
                 .href(url::Url::parse("https://example.com").expect(""))
                 .make_img()
