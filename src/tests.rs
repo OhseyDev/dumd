@@ -1,5 +1,5 @@
-use super::{block, text};
 use super::Builder;
+use super::{block, text};
 use std::str::FromStr;
 
 #[test]
@@ -74,6 +74,26 @@ fn tokenize() {
             ParseToken::RepeatSpecial('`', 2)
         ],
         super::tokenize("``code``")
+    );
+    assert_eq!(
+        vec![
+            ParseToken::RepeatSpecial('[', 1),
+            ParseToken::Number(1, None),
+            ParseToken::RepeatSpecial(']', 1),
+            ParseToken::RepeatSpecial(':', 1),
+            ParseToken::RepeatSpecial(' ', 1),
+            ParseToken::RepeatSpecial('<', 1),
+            ParseToken::String("https".to_string()),
+            ParseToken::RepeatSpecial(':', 1),
+            ParseToken::RepeatSpecial('/', 2),
+            ParseToken::String("www".to_string()),
+            ParseToken::RepeatSpecial('.', 1),
+            ParseToken::String("example".to_string()),
+            ParseToken::RepeatSpecial('.', 1),
+            ParseToken::String("com".to_string()),
+            ParseToken::RepeatSpecial('>', 1),
+        ],
+        super::tokenize("[1]: <https://www.example.com>")
     )
 }
 

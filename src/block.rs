@@ -111,6 +111,7 @@ fn parse_inner(
             }
             ParseToken::RepeatSpecial(c, n) => content.push_str(&c.to_string().repeat(*n)),
             ParseToken::String(s) => content.push_str(s),
+            ParseToken::Number(_, _) => content.push_str(&tok.to_string()),
         }
     }
     return if count != 0 {
@@ -161,37 +162,43 @@ impl super::Element for Code {
                             ParseToken::RepeatSpecial(c, _) => {
                                 return Err(crate::ParseError::UnexpectedChar(*c))
                             }
+                            ParseToken::Number(_, _) => {
+                                return Err(crate::ParseError::UnexpectedString(tok.to_string()))
+                            }
                         }
                     }
                     let mut content = String::new();
                     while let Some(tok) = iter.next() {
                         match tok {
                             ParseToken::RepeatSpecial('\n', _) => continue,
+                            ParseToken::RepeatSpecial('`', m) => {
+                                if n <= m {
+                                    break;
+                                }
+                                content.push_str(&"`".repeat(*m));
+                            }
                             ParseToken::RepeatSpecial(c, n) => {
                                 content.push_str(&c.to_string().repeat(*n))
                             }
                             ParseToken::String(s) => content.push_str(s),
+                            ParseToken::Number(_, _) => {
+                                content.push_str(&tok.to_string());
+                            }
                         }
                     }
-                    if content.ends_with("`".repeat(*n).as_str()) {
-                        let mut i = *n;
-                        while i > 0 {
-                            content.pop();
-                            i -= 1;
-                        }
-                        Ok(Code {
-                            content: content.into_boxed_str(),
-                            kind: CodeKind::from_str(&kind).unwrap().increase_indent(*n),
-                        })
-                    } else {
-                        Err(crate::ParseError::UnexpectedEnd)
-                    }
+                    Ok(Code {
+                        content: content.into_boxed_str(),
+                        kind: CodeKind::from_str(&kind).unwrap().increase_indent(*n),
+                    })
                 }
                 ParseToken::String(s) => {
                     return Err(crate::ParseError::UnexpectedString(s.to_owned()))
                 }
                 ParseToken::RepeatSpecial(c, _) => {
                     return Err(crate::ParseError::UnexpectedChar(*c))
+                }
+                ParseToken::Number(_, _) => {
+                    return Err(crate::ParseError::UnexpectedString(first_tok.to_string()))
                 }
             };
         }

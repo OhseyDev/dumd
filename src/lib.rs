@@ -49,31 +49,23 @@ impl From<crate::Error> for ParseError {
 pub(self) enum ParseToken {
     RepeatSpecial(char, usize),
     String(String),
+    Number(usize, Option<usize>),
 }
 
-#[inline]
-fn process_char(
-    c: char,
-    last_c: &mut char,
-    counter: &mut usize,
-    tokens: &mut Vec<ParseToken>,
-    src: &mut String,
-) {
-    if *last_c == '\0' && src.is_empty() {
-        *last_c = c;
-        return;
+impl ToString for ParseToken {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Number(p, d) => {
+                if let Some(f) = d {
+                    format!("{}.{}", p, f)
+                } else {
+                    p.to_string()
+                }
+            }
+            Self::RepeatSpecial(c, n) => c.to_string().repeat(*n),
+            Self::String(s) => s.clone(),
+        }
     }
-    if *last_c == c {
-        *counter += 1;
-        return;
-    } else if src.is_empty() {
-        tokens.push(ParseToken::RepeatSpecial(*last_c, *counter + 1))
-    } else {
-        tokens.push(ParseToken::String(src.clone()));
-        src.clear()
-    }
-    *last_c = c;
-    *counter = 0;
 }
 
 #[macro_export]
@@ -109,6 +101,14 @@ macro_rules! token_expect {
                 crate::ParseToken::RepeatSpecial(c, _) => {
                     Err(crate::ParseError::UnexpectedChar(*c))
                 }
+                crate::ParseToken::Number(p, d) => {
+                    let s = if let Some(f) = d {
+                        format!("{}.{}", p, f)
+                    } else {
+                        p.to_string()
+                    };
+                    Err(crate::ParseError::UnexpectedString(s))
+                }
             };
         }
     };
@@ -116,6 +116,24 @@ macro_rules! token_expect {
         if let Some(t) = $iter.next() {
             match t {
                 ParseToken::RepeatSpecial($char, $num) => {}
+                ParseToken::RepeatSpecial(c, _) => {
+                    return Err(crate::ParseError::UnexpectedChar(*c))
+                }
+                ParseToken::String(s) => {
+                    return Err(crate::ParseError::UnexpectedString(s.to_owned()))
+                }
+                ParseToken::Number(_, _) => {
+                    return Err(crate::ParseError::UnexpectedString(t.to_string()))
+                }
+            }
+        } else {
+            return Err(crate::ParseError::UnexpectedEnd);
+        }
+    };
+    ($iter:ident, $char:literal) => {
+        if let Some(t) = $iter.next() {
+            match t {
+                ParseToken::RepeatSpecial($char, _) => {}
                 ParseToken::RepeatSpecial(c, _) => {
                     return Err(crate::ParseError::UnexpectedChar(*c))
                 }
@@ -139,7 +157,7 @@ macro_rules! token_ignore_char {
         }
     };
     ($iter:ident, $char:literal, $tok:ident) => {
-        if let ParseToken::RepeatSpecial($char, _) = $tok {
+        if let crate::ParseToken::RepeatSpecial($char, _) = $tok {
             if let Some(t) = $iter.next() {
                 t
             } else {
@@ -200,7 +218,8 @@ macro_rules! token_combine_except {
                 crate::ParseToken::String(s) => combined.push_str(s),
                 crate::ParseToken::RepeatSpecial(c, n) => {
                     combined.push_str(&c.to_string().repeat(*n))
-                }
+                },
+                crate::ParseToken::Number(_, _) => combined.push_str(&t.to_string()),
             }
             item = $iter.next();
         }
@@ -208,11 +227,65 @@ macro_rules! token_combine_except {
     }};
 }
 
+#[inline]
+fn process_char(
+    c: char,
+    last_c: &mut char,
+    counter: &mut usize,
+    tokens: &mut Vec<ParseToken>,
+    src: &mut String,
+    nu: &mut bool,
+) {
+    if *last_c == '\0' && src.is_empty() {
+        *last_c = c;
+        return;
+    }
+    if c >= '0' && c <= '9' {
+        if src.is_empty() {
+            if *last_c != '\0' {
+                tokens.push(ParseToken::RepeatSpecial(*last_c, *counter + 1))
+            }
+            src.push(c);
+            *nu = true
+        } else {
+            src.push(c)
+        }
+        *last_c = c;
+        *counter = 0;
+        return;
+    }
+    if *last_c == c {
+        *counter += 1;
+        return;
+    } else if src.is_empty() {
+        tokens.push(ParseToken::RepeatSpecial(*last_c, *counter + 1))
+    } else {
+        let t = if *nu {
+            let mut s = src.split('.');
+            let f = s.nth(0).unwrap().parse().unwrap();
+            let k = if let Some(k) = s.nth(1) {
+                Some(k.parse().unwrap())
+            } else {
+                None
+            };
+            *nu = false;
+            ParseToken::Number(f, k)
+        } else {
+            ParseToken::String(src.clone())
+        };
+        tokens.push(t);
+        src.clear()
+    }
+    *last_c = c;
+    *counter = 0;
+}
+
 pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
     let mut tokens = Vec::new();
     let mut last_c = '\0';
     let mut counter: usize = 0;
     let mut src = String::new();
+    let mut number = false;
     for c in s.chars() {
         match c {
             'A'..='Z' => {
@@ -229,21 +302,28 @@ pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
                 }
                 src.push(c)
             }
-            '1'..='9' => {
+            '1'..='9' | ' ' => {
                 if src.is_empty() {
-                    process_char(c, &mut last_c, &mut counter, &mut tokens, &mut src)
+                    process_char(
+                        c,
+                        &mut last_c,
+                        &mut counter,
+                        &mut tokens,
+                        &mut src,
+                        &mut number,
+                    )
                 } else {
                     src.push(c);
                 }
             }
-            ' ' => {
-                if src.is_empty() {
-                    process_char(c, &mut last_c, &mut counter, &mut tokens, &mut src)
-                } else {
-                    src.push(c);
-                }
-            }
-            _ => process_char(c, &mut last_c, &mut counter, &mut tokens, &mut src),
+            _ => process_char(
+                c,
+                &mut last_c,
+                &mut counter,
+                &mut tokens,
+                &mut src,
+                &mut number,
+            ),
         }
     }
     if last_c != '\0' {

@@ -37,6 +37,9 @@ impl Element for Heading {
                                 ParseToken::RepeatSpecial(c, _) => {
                                     Err(crate::ParseError::UnexpectedChar(*c))
                                 }
+                                ParseToken::Number(_, _) => {
+                                    Err(crate::ParseError::UnexpectedString(t.to_string()))
+                                }
                                 ParseToken::String(s) => Ok(Heading {
                                     level: HeadingLvl::Level1,
                                     content: s.clone(),
@@ -46,6 +49,9 @@ impl Element for Heading {
                         ParseToken::RepeatSpecial(c, _) => {
                             Err(crate::ParseError::UnexpectedChar(*c))
                         }
+                        ParseToken::Number(_, _) => {
+                            Err(crate::ParseError::UnexpectedString(t.to_string()))
+                        }
                         ParseToken::String(s) => Ok(Heading {
                             level: HeadingLvl::Level1,
                             content: s.clone(),
@@ -54,6 +60,7 @@ impl Element for Heading {
                 }
                 ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
                 ParseToken::String(s) => Err(crate::ParseError::UnexpectedString(s.clone())),
+                ParseToken::Number(_, _) => Err(crate::ParseError::UnexpectedString(t.to_string())),
             };
         }
         return Err(crate::ParseError::UnexpectedEnd);
@@ -243,6 +250,9 @@ impl super::Element for Item {
                                 return Err(crate::ParseError::UnexpectedChar(*c))
                             }
                             ParseToken::String(s) => s.to_owned(),
+                            ParseToken::Number(_, _) => {
+                                return Err(crate::ParseError::UnexpectedString(tok.to_string()))
+                            }
                         }
                     } else {
                         return Err(crate::ParseError::UnexpectedEnd);
@@ -268,6 +278,9 @@ impl super::Element for Item {
                             ParseToken::String(s) => {
                                 return Err(crate::ParseError::UnexpectedString(s.clone()))
                             }
+                            ParseToken::Number(_, _) => {
+                                return Err(crate::ParseError::UnexpectedString(tok.to_string()))
+                            }
                         }
                     }
                 }
@@ -279,10 +292,14 @@ impl super::Element for Item {
                                 src.push_str(&c.to_string().repeat(*n))
                             }
                             ParseToken::String(s) => src.push_str(s),
+                            ParseToken::Number(_, _) => src.push_str(&tok.to_string()),
                         }
                     }
                 }
                 ParseToken::RepeatSpecial(' ', _) => continue,
+                ParseToken::Number(_, _) => {
+                    return Err(crate::ParseError::UnexpectedString(first_tok.to_string()))
+                }
                 _ => {}
             }
         }
@@ -302,12 +319,18 @@ fn process_link_item(iter: &mut Iter<ParseToken>, img: bool) -> Result<Item, cra
             ParseToken::RepeatSpecial('[', 1) => {}
             ParseToken::String(s) => return Err(crate::ParseError::UnexpectedString(s.to_owned())),
             ParseToken::RepeatSpecial(c, _) => return Err(crate::ParseError::UnexpectedChar(*c)),
+            ParseToken::Number(_, _) => {
+                return Err(crate::ParseError::UnexpectedString(tok.to_string()))
+            }
         }
     }
     let name = if let Some(tok) = iter.next() {
         match tok {
             ParseToken::RepeatSpecial(c, _) => return Err(crate::ParseError::UnexpectedChar(*c)),
             ParseToken::String(s) => s.to_owned().into_boxed_str(),
+            ParseToken::Number(_, _) => {
+                return Err(crate::ParseError::UnexpectedString(tok.to_string()))
+            }
         }
     } else {
         return Err(crate::ParseError::UnexpectedEnd);
@@ -325,6 +348,9 @@ fn process_link_item(iter: &mut Iter<ParseToken>, img: bool) -> Result<Item, cra
             ParseToken::RepeatSpecial(')', 1) => break true,
             ParseToken::RepeatSpecial(c, n) => src_str.push_str(&c.to_string().repeat(*n)),
             ParseToken::String(s) => src_str.push_str(s),
+            ParseToken::Number(_, _) => {
+                return Err(crate::ParseError::UnexpectedString(tok.to_string()))
+            }
         }
     };
     if !res {
@@ -333,6 +359,9 @@ fn process_link_item(iter: &mut Iter<ParseToken>, img: bool) -> Result<Item, cra
         return Err(match t {
             ParseToken::RepeatSpecial(c, _) => crate::ParseError::UnexpectedChar(*c),
             ParseToken::String(s) => crate::ParseError::UnexpectedString(s.to_owned()),
+            ParseToken::Number(_, _) => {
+                return Err(crate::ParseError::UnexpectedString(t.to_string()))
+            }
         });
     }
     let u = url::Url::parse(&src_str);
@@ -387,16 +416,7 @@ impl super::Element for Reference {
                             ParseToken::RepeatSpecial(':', n) => name.push_str(&":".repeat(*n)),
                             ParseToken::RepeatSpecial('\'', n) => name.push_str(&"'".repeat(*n)),
                             ParseToken::RepeatSpecial('"', n) => name.push_str(&"\"".repeat(*n)),
-                            ParseToken::RepeatSpecial('0', n) => name.push_str(&"0".repeat(*n)),
-                            ParseToken::RepeatSpecial('1', n) => name.push_str(&"1".repeat(*n)),
-                            ParseToken::RepeatSpecial('2', n) => name.push_str(&"2".repeat(*n)),
-                            ParseToken::RepeatSpecial('3', n) => name.push_str(&"3".repeat(*n)),
-                            ParseToken::RepeatSpecial('4', n) => name.push_str(&"4".repeat(*n)),
-                            ParseToken::RepeatSpecial('5', n) => name.push_str(&"5".repeat(*n)),
-                            ParseToken::RepeatSpecial('6', n) => name.push_str(&"6".repeat(*n)),
-                            ParseToken::RepeatSpecial('7', n) => name.push_str(&"7".repeat(*n)),
-                            ParseToken::RepeatSpecial('8', n) => name.push_str(&"8".repeat(*n)),
-                            ParseToken::RepeatSpecial('9', n) => name.push_str(&"9".repeat(*n)),
+                            ParseToken::Number(_, _) => name.push_str(&t.to_string()),
                             ParseToken::RepeatSpecial(']', 1) => {
                                 if name.is_empty() {
                                     return Err(crate::ParseError::UnexpectedChar(']'));
@@ -494,6 +514,9 @@ impl super::Element for Reference {
                 }
                 ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
                 ParseToken::String(s) => Err(crate::ParseError::UnexpectedString(s.to_owned())),
+                ParseToken::Number(_, _) => {
+                    return Err(crate::ParseError::UnexpectedString(t.to_string()))
+                }
             }
         } else {
             Err(crate::ParseError::EmptyDocument)
