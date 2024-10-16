@@ -28,9 +28,9 @@ pub struct Code {
 impl CodeKind {
     pub fn increase_indent(mut self, n: usize) -> Self {
         self = match self {
+            CodeKind::Cpp(c) => CodeKind::Cpp(c + n),
             CodeKind::CSharp(c) => CodeKind::CSharp(c + n),
             CodeKind::CStandard(c) => CodeKind::CStandard(c + n),
-            CodeKind::Cpp(c) => CodeKind::Cpp(c + n),
             CodeKind::Go(c) => CodeKind::Go(c + n),
             CodeKind::Haskell(c) => CodeKind::Haskell(c + n),
             CodeKind::Java(c) => CodeKind::Java(c + n),
@@ -43,6 +43,23 @@ impl CodeKind {
             CodeKind::Unknown(s, c) => CodeKind::Unknown(s, c + n),
         };
         self
+    }
+    pub fn get_index(&self) -> usize {
+        match self {
+            &Self::Cpp(c) => c,
+            &Self::CSharp(c) => c,
+            &Self::CStandard(c) => c,
+            &Self::Go(c) => c,
+            &Self::Haskell(c) => c,
+            &Self::Java(c) => c,
+            &Self::JavaScript(c) => c,
+            &Self::Lua(c) => c,
+            &Self::Python(c) => c,
+            &Self::Ruby(c) => c,
+            &Self::Rust(c) => c,
+            &Self::None(c) => c,
+            &Self::Unknown(_, c) => c,
+        }
     }
 }
 
@@ -126,22 +143,14 @@ fn parse_inner(
 
 impl ToString for Code {
     fn to_string(&self) -> String {
-        let s = match &self.kind {
-            CodeKind::Cpp(c) => "`".repeat(*c) + "cpp",
-            CodeKind::CSharp(c) => "`".repeat(*c) + "csharp",
-            CodeKind::CStandard(c) => "`".repeat(*c) + "c",
-            CodeKind::Go(c) => "`".repeat(*c) + "go",
-            CodeKind::Haskell(c) => "`".repeat(*c) + "haskell",
-            CodeKind::Java(c) => "`".repeat(*c) + "java",
-            CodeKind::JavaScript(c) => "`".repeat(*c) + "javascript",
-            CodeKind::Lua(c) => "`".repeat(*c) + "lua",
-            CodeKind::Python(c) => "`".repeat(*c) + "python",
-            CodeKind::Ruby(c) => "`".repeat(*c) + "ruby",
-            CodeKind::Rust(c) => "`".repeat(*c) + "rust",
-            CodeKind::None(c) => "`".repeat(*c),
-            CodeKind::Unknown(s, c) => "`".repeat(*c) + s.to_string().as_str(),
-        };
-        format!("{}{}{}``", s, self.content, s)
+        let prefix = "`".repeat(self.kind.get_index());
+        format!(
+            "{}{}{}{}",
+            prefix,
+            self.kind.to_string(),
+            self.content,
+            prefix
+        )
     }
 }
 

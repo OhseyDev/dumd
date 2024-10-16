@@ -37,8 +37,8 @@ pub struct Builder {
 }
 
 impl super::Element for Ordered {
-    fn parse(s: &mut Iter<crate::ParseToken>) -> Result<Self, crate::ParseError> {
-        crate::token_ignore_char!(s, ' ');
+    fn parse(iter: &mut Iter<crate::ParseToken>) -> Result<Self, crate::ParseError> {
+        crate::token_ignore_char!(iter, ' ');
         todo!()
     }
 }
