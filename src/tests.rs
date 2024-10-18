@@ -6,7 +6,9 @@ use std::str::FromStr;
 fn parse_list() {
     assert_eq!(
         Ok::<list::Element, crate::ParseError>(list::Builder::default().build().unwrap()),
-        Ok(list::Element::Unordered(list::Unordered::from_str(" - First item\n - Second item").expect("Error")))
+        Ok(list::Element::Unordered(
+            list::Unordered::from_str(" - First item\n - Second item").expect("Error")
+        ))
     )
 }
 
@@ -102,7 +104,8 @@ fn tokenize() {
             ParseToken::RepeatSpecial('>', 1),
         ],
         super::tokenize("[1]: <https://www.example.com>")
-    )
+    );
+    assert_eq!(vec![ParseToken::Number(1, Some(0))], super::tokenize("1."),);
 }
 
 #[test]

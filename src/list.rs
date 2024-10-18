@@ -1,5 +1,7 @@
 use std::slice::Iter;
 
+use crate::ParseToken;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Item {
     content: Box<str>,
@@ -39,7 +41,15 @@ pub struct Builder {
 impl super::Element for Ordered {
     fn parse(iter: &mut Iter<crate::ParseToken>) -> Result<Self, crate::ParseError> {
         crate::token_ignore_char!(iter, ' ');
-        todo!("Implement")
+        if let Some(t) = iter.next() {
+            match t {
+                ParseToken::Number(p, n) => todo!(),
+                ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
+                ParseToken::String(s) => Err(crate::ParseError::UnexpectedString(s.to_owned())),
+            }
+        } else {
+            Err(crate::ParseError::UnexpectedEnd)
+        }
     }
 }
 
@@ -86,7 +96,7 @@ impl ToString for Element {
     fn to_string(&self) -> String {
         match self {
             Self::Ordered(l) => l.to_string(),
-            Self::Unordered(l) => l.to_string()
+            Self::Unordered(l) => l.to_string(),
         }
     }
 }

@@ -259,7 +259,8 @@ fn process_char(
         *counter += 1;
         return;
     } else if src.is_empty() {
-        tokens.push(ParseToken::RepeatSpecial(*last_c, *counter + 1))
+        tokens.push(ParseToken::RepeatSpecial(*last_c, *counter + 1));
+        *last_c = '\0';
     } else {
         let t = if *nu {
             let mut s = src.split('.');
@@ -275,13 +276,14 @@ fn process_char(
             ParseToken::String(src.clone())
         };
         tokens.push(t);
-        src.clear()
+        src.clear();
     }
     *last_c = c;
     *counter = 0;
 }
 
 pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
+    let mut whole = None;
     let mut tokens = Vec::new();
     let mut last_c = '\0';
     let mut counter: usize = 0;
@@ -290,20 +292,20 @@ pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
     for c in s.chars() {
         match c {
             'A'..='Z' => {
-                if last_c != '\0' {
+                if last_c != '\0' && !number {
                     tokens.push(ParseToken::RepeatSpecial(last_c, counter + 1));
                     last_c = '\0';
                 }
                 src.push(c)
             }
             'a'..='z' => {
-                if last_c != '\0' {
+                if last_c != '\0' && !number {
                     tokens.push(ParseToken::RepeatSpecial(last_c, counter + 1));
                     last_c = '\0';
                 }
                 src.push(c)
             }
-            '1'..='9' | ' ' => {
+            ' ' => {
                 if src.is_empty() {
                     process_char(
                         c,
@@ -314,8 +316,39 @@ pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
                         &mut number,
                     )
                 } else {
-                    src.push(c);
+                    src.push(' ')
                 }
+            }
+            '0'..='9' => {
+                if last_c != '\0' {
+                    tokens.push(ParseToken::RepeatSpecial(last_c, counter + 1));
+                    last_c = '\0';
+                }
+                if src.is_empty() {
+                    number = true;
+                }
+                src.push(c);
+            }
+            '.' => {
+                if number {
+                    last_c = '\0';
+                    if let Some(w) = whole {
+                        tokens.push(ParseToken::Number(w, Some(src.parse().unwrap())));
+                        whole = None;
+                    } else {
+                        whole = Some(src.parse().unwrap());
+                        src.clear();
+                        continue;
+                    }
+                }
+                process_char(
+                    c,
+                    &mut last_c,
+                    &mut counter,
+                    &mut tokens,
+                    &mut src,
+                    &mut number,
+                )
             }
             _ => process_char(
                 c,
@@ -327,7 +360,23 @@ pub(self) fn tokenize(s: &str) -> Vec<ParseToken> {
             ),
         }
     }
-    if last_c != '\0' {
+    if number {
+        let (w, b) = if let Some(w) = whole {
+            (w, true)
+        } else {
+            (src.parse().unwrap(), false)
+        };
+        let d = if src.is_empty() {
+            if b {
+                Some(0)
+            } else {
+                None
+            }
+        } else {
+            Some(src.parse().unwrap())
+        };
+        tokens.push(ParseToken::Number(w, d))
+    } else if last_c != '\0' {
         tokens.push(ParseToken::RepeatSpecial(last_c, counter + 1))
     } else if !src.is_empty() {
         tokens.push(ParseToken::String(src))
