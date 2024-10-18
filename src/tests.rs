@@ -1,6 +1,14 @@
 use super::Builder;
-use super::{block, text};
+use super::{block, list, text};
 use std::str::FromStr;
+
+#[test]
+fn parse_list() {
+    assert_eq!(
+        Ok::<list::Element, crate::ParseError>(list::Builder::default().build().unwrap()),
+        Ok(list::Element::Unordered(list::Unordered::from_str(" - First item\n - Second item").expect("Error")))
+    )
+}
 
 #[test]
 fn parse_code() {

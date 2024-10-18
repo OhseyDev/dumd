@@ -68,9 +68,9 @@ impl FromStr for CodeKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "" => Ok(CodeKind::None(0)),
+            "cpp" => Ok(CodeKind::Cpp(0)),
             "csharp" => Ok(CodeKind::CSharp(0)),
             "c" => Ok(CodeKind::CStandard(0)),
-            "cpp" => Ok(CodeKind::Cpp(0)),
             "go" => Ok(CodeKind::Go(0)),
             "haskell" => Ok(CodeKind::Haskell(0)),
             "java" => Ok(CodeKind::Java(0)),
@@ -87,9 +87,9 @@ impl FromStr for CodeKind {
 impl ToString for CodeKind {
     fn to_string(&self) -> String {
         match self {
+            CodeKind::Cpp(_) => String::from("cpp"),
             CodeKind::CSharp(_) => String::from("csharp"),
             CodeKind::CStandard(_) => String::from("c"),
-            CodeKind::Cpp(_) => String::from("cpp"),
             CodeKind::Go(_) => String::from("go"),
             CodeKind::Haskell(_) => String::from("haskell"),
             CodeKind::Java(_) => String::from("java"),

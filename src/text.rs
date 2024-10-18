@@ -77,9 +77,15 @@ impl Element for Heading {
                             level: HeadingLvl::Level2,
                             content: s.to_owned(),
                         }),
-                        ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
-                        ParseToken::String(s) => Err(crate::ParseError::UnexpectedString(s.to_owned())),
-                        ParseToken::Number(p, n) => Err(crate::ParseError::UnexpectedNumber(*p, *n))
+                        ParseToken::RepeatSpecial(c, _) => {
+                            Err(crate::ParseError::UnexpectedChar(*c))
+                        }
+                        ParseToken::String(s) => {
+                            Err(crate::ParseError::UnexpectedString(s.to_owned()))
+                        }
+                        ParseToken::Number(p, n) => {
+                            Err(crate::ParseError::UnexpectedNumber(*p, *n))
+                        }
                     };
                 }
                 ParseToken::Number(_, _) => Err(crate::ParseError::UnexpectedString(t.to_string())),
@@ -110,7 +116,7 @@ pub enum HeadingLvl {
 
 impl HeadingLvl {
     pub fn iterate(n: usize) -> Self {
-        let m = (n-1) % 6;
+        let m = (n - 1) % 6;
         let mut lvl = HeadingLvl::Level1;
         for _ in 0..m {
             lvl = lvl.increment();

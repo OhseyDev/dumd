@@ -7,18 +7,18 @@ pub struct Item {
     ordered: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Element {
     Ordered(Ordered),
     Unordered(Unordered),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Ordered {
     items: Box<[Item]>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Unordered {
     items: Box<[Item]>,
 }
@@ -39,7 +39,33 @@ pub struct Builder {
 impl super::Element for Ordered {
     fn parse(iter: &mut Iter<crate::ParseToken>) -> Result<Self, crate::ParseError> {
         crate::token_ignore_char!(iter, ' ');
-        todo!()
+        todo!("Implement")
+    }
+}
+
+impl super::Element for Unordered {
+    fn parse(iter: &mut Iter<crate::ParseToken>) -> Result<Self, crate::ParseError> {
+        crate::token_ignore_char!(iter, ' ');
+        todo!("Implement")
+    }
+}
+
+impl super::Element for Element {
+    fn parse(iter: &mut Iter<crate::ParseToken>) -> Result<Self, crate::ParseError> {
+        crate::token_ignore_char!(iter, ' ');
+        todo!("Implement")
+    }
+}
+
+impl Into<Element> for Unordered {
+    fn into(self) -> Element {
+        Element::Unordered(self)
+    }
+}
+
+impl Into<Element> for Ordered {
+    fn into(self) -> Element {
+        Element::Ordered(self)
     }
 }
 
@@ -53,6 +79,15 @@ impl ToString for Ordered {
         }
         s.pop();
         return s;
+    }
+}
+
+impl ToString for Element {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Ordered(l) => l.to_string(),
+            Self::Unordered(l) => l.to_string()
+        }
     }
 }
 
@@ -77,6 +112,9 @@ impl ToString for Item {
         return s;
     }
 }
+
+crate::impl_from_str!(Unordered);
+crate::impl_from_str!(Ordered);
 
 impl ItemBuilder {
     pub fn content(mut self, s: String) -> Self {
