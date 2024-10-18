@@ -14,6 +14,7 @@ pub enum ParseError {
     EmptyContent,
     UnexpectedChar(char),
     UnexpectedString(String),
+    UnexpectedNumber(usize, Option<usize>),
     UnexpectedEnd,
     InvalidUrl(ParseErrorUrl),
     IncompleteBuilderData,

@@ -23,9 +23,11 @@ impl Element for Heading {
                     } else {
                         return Err(crate::ParseError::UnexpectedEnd);
                     };
-                    if *n > 6 {
+                    let level = if *n > 6 {
                         return Err(crate::ParseError::UnexpectedChar('#'));
-                    }
+                    } else {
+                        HeadingLvl::iterate(*n)
+                    };
                     match tok {
                         ParseToken::RepeatSpecial(' ', _) => {
                             let t = if let Some(t) = iter.next() {
@@ -41,7 +43,7 @@ impl Element for Heading {
                                     Err(crate::ParseError::UnexpectedString(t.to_string()))
                                 }
                                 ParseToken::String(s) => Ok(Heading {
-                                    level: HeadingLvl::Level1,
+                                    level,
                                     content: s.clone(),
                                 }),
                             }
@@ -53,13 +55,33 @@ impl Element for Heading {
                             Err(crate::ParseError::UnexpectedString(t.to_string()))
                         }
                         ParseToken::String(s) => Ok(Heading {
-                            level: HeadingLvl::Level1,
+                            level,
                             content: s.clone(),
                         }),
                     }
                 }
                 ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
-                ParseToken::String(s) => Err(crate::ParseError::UnexpectedString(s.clone())),
+                ParseToken::String(s) => {
+                    crate::token_expect!(iter, '\n', 1);
+                    let t = if let Some(t) = iter.next() {
+                        t
+                    } else {
+                        return Err(crate::ParseError::UnexpectedEnd);
+                    };
+                    return match t {
+                        ParseToken::RepeatSpecial('=', _) => Ok(Heading {
+                            level: HeadingLvl::Level1,
+                            content: s.to_owned(),
+                        }),
+                        ParseToken::RepeatSpecial('-', _) => Ok(Heading {
+                            level: HeadingLvl::Level2,
+                            content: s.to_owned(),
+                        }),
+                        ParseToken::RepeatSpecial(c, _) => Err(crate::ParseError::UnexpectedChar(*c)),
+                        ParseToken::String(s) => Err(crate::ParseError::UnexpectedString(s.to_owned())),
+                        ParseToken::Number(p, n) => Err(crate::ParseError::UnexpectedNumber(*p, *n))
+                    };
+                }
                 ParseToken::Number(_, _) => Err(crate::ParseError::UnexpectedString(t.to_string())),
             };
         }
@@ -87,6 +109,22 @@ pub enum HeadingLvl {
 }
 
 impl HeadingLvl {
+    pub fn iterate(n: usize) -> Self {
+        let m = (n-1) % 6;
+        let mut lvl = HeadingLvl::Level1;
+        for _ in 0..m {
+            lvl = lvl.increment();
+        }
+        lvl
+    }
+    pub fn iterate_self(self, n: usize) -> Self {
+        let m: usize = (n + <HeadingLvl as Into<usize>>::into(self)) % 6;
+        let mut lvl = HeadingLvl::Level1;
+        while m > 0 {
+            lvl = lvl.increment();
+        }
+        lvl
+    }
     pub fn increment(self) -> Self {
         match self {
             Self::Level1 => Self::Level2,

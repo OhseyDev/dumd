@@ -114,9 +114,66 @@ fn parse_heading() {
     assert_eq!(
         Ok(text::HeadingBuilder::default()
             .content("Heading 1".to_string())
+            .level(text::HeadingLvl::Level1)
             .build()
             .unwrap()),
         text::Heading::from_str("# Heading 1"),
+    );
+    assert_eq!(
+        Ok(text::HeadingBuilder::default()
+            .content("Heading 2".to_string())
+            .level(text::HeadingLvl::Level2)
+            .build()
+            .unwrap()),
+        text::Heading::from_str("## Heading 2"),
+    );
+    assert_eq!(
+        Ok(text::HeadingBuilder::default()
+            .content("Heading 3".to_string())
+            .level(text::HeadingLvl::Level3)
+            .build()
+            .unwrap()),
+        text::Heading::from_str("### Heading 3"),
+    );
+    assert_eq!(
+        Ok(text::HeadingBuilder::default()
+            .content("Heading 4".to_string())
+            .level(text::HeadingLvl::Level4)
+            .build()
+            .unwrap()),
+        text::Heading::from_str("#### Heading 4"),
+    );
+    assert_eq!(
+        Ok(text::HeadingBuilder::default()
+            .content("Heading 5".to_string())
+            .level(text::HeadingLvl::Level5)
+            .build()
+            .unwrap()),
+        text::Heading::from_str("##### Heading 5"),
+    );
+    assert_eq!(
+        Ok(text::HeadingBuilder::default()
+            .content("Heading 6".to_string())
+            .level(text::HeadingLvl::Level6)
+            .build()
+            .unwrap()),
+        text::Heading::from_str("###### Heading 6"),
+    );
+    // Alternate heading syntax
+    assert_eq!(
+        Ok(text::HeadingBuilder::default()
+            .content("Heading 1".to_string())
+            .build()
+            .unwrap()),
+        text::Heading::from_str("Heading 1\n==="),
+    );
+    assert_eq!(
+        Ok(text::HeadingBuilder::default()
+            .content("Heading 2".to_string())
+            .level(text::HeadingLvl::Level2)
+            .build()
+            .unwrap()),
+        text::Heading::from_str("Heading 2\n----")
     );
 }
 
